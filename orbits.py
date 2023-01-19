@@ -48,11 +48,12 @@ class TwoBodyKeplerOrbit:
 
         self.total_energy = 0.5 * numpy.dot(self.velocity_vector, self.velocity_vector) - TwoBodyKeplerOrbit.EARTH_MU / numpy.linalg.norm(self.position_vector)
 
-        self.semi_major_axis = -TwoBodyKeplerOrbit.EARTH_MU / (2*self.total_energy)
+        self.semi_major_axis = -TwoBodyKeplerOrbit.EARTH_MU / (2 * self.total_energy)
 
         self.parameter = numpy.dot(self.angular_momentum, self.angular_momentum) / TwoBodyKeplerOrbit.EARTH_MU
 
-        self.eccentricity = numpy.sqrt(1 - self.parameter / self.semi_major_axis)
+        self.eccentricity_vector = 1 / TwoBodyKeplerOrbit.EARTH_MU * cross(self.velocity_vector, self.angular_momentum) - self.position_vector / numpy.linalg.norm(self.position_vector)
+        self.eccentricity = numpy.sqrt(1 - self.parameter / self.semi_major_axis) # this is the same as the norm of the eccentricity vector.
         self.orbit_type = KeplerOrbitTypes.get_orbit_type(self.eccentricity)
 
         self.semi_minor_axis = self.semi_major_axis * numpy.sqrt(1 - self.eccentricity**2)
