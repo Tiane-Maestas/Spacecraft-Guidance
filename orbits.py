@@ -84,7 +84,7 @@ class TwoBodyKeplerOrbit:
 
         orbit = TwoBodyKeplerOrbit.build_from_known_params(semi_major_axis, eccentricity, true_anomaly)
 
-        orbit.longitude_of_ascending_node = numpy.degrees(numpy.arctan2(h_hat[0], -h_hat[1]))
+        orbit.longitude_of_ascending_node = numpy.degrees(numpy.arctan2(h_hat[0], -1 * h_hat[1]))
         orbit.inclination = numpy.degrees(numpy.arccos(h_hat[2]))
         orbit.argument_of_periapsis = numpy.degrees(numpy.arctan2(e_hat[2], e_perpendicular_hat[2]))
 
@@ -110,10 +110,10 @@ class TwoBodyKeplerOrbit:
 
         # Calculate velocity vector.
         H = numpy.sqrt(TwoBodyKeplerOrbit.EARTH_MU * semi_major_axis * (1 - numpy.power(eccentricity, 2)))
-        v = (-TwoBodyKeplerOrbit.EARTH_MU / H)
+        v = (-1 * TwoBodyKeplerOrbit.EARTH_MU / H)
         v_x = numpy.cos(longitude_of_ascending_node) * (numpy.sin(true_anomaly) + eccentricity * numpy.sin(argument_of_periapsis)) + numpy.sin(longitude_of_ascending_node) * (numpy.cos(true_anomaly) + eccentricity * numpy.cos(argument_of_periapsis)) * numpy.cos(inclination)
         v_y = numpy.sin(longitude_of_ascending_node) * (numpy.sin(true_anomaly) + eccentricity * numpy.sin(argument_of_periapsis)) - numpy.cos(longitude_of_ascending_node) * (numpy.cos(true_anomaly) + eccentricity * numpy.cos(argument_of_periapsis)) * numpy.cos(inclination)
-        v_z = -(numpy.cos(true_anomaly) + eccentricity * numpy.cos(argument_of_periapsis)) * numpy.sin(inclination)
+        v_z = -1 * (numpy.cos(true_anomaly) + eccentricity * numpy.cos(argument_of_periapsis)) * numpy.sin(inclination)
         v_hat = numpy.array([v_x, v_y, v_z])
         velocity_vector = v * v_hat
 
@@ -131,7 +131,7 @@ class TwoBodyKeplerOrbit:
 
         self.total_energy = 0.5 * numpy.dot(self.velocity_vector, self.velocity_vector) - TwoBodyKeplerOrbit.EARTH_MU / numpy.linalg.norm(self.position_vector)
 
-        self.semi_major_axis = -TwoBodyKeplerOrbit.EARTH_MU / (2 * self.total_energy)
+        self.semi_major_axis = -1 * TwoBodyKeplerOrbit.EARTH_MU / (2 * self.total_energy)
 
         self.parameter = numpy.dot(self.angular_momentum, self.angular_momentum) / TwoBodyKeplerOrbit.EARTH_MU
 
