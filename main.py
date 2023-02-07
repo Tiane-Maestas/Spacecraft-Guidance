@@ -7,6 +7,9 @@ from orbits import OrbitUtilities
 # test_orbit = TwoBodyKeplerOrbit(test_position, test_velocity, angle_type='deg')
 # print(test_orbit)
 
+# test_perifocal = TwoBodyKeplerOrbit.convert_position_and_velocity_to_perifocal_frame(test_orbit)
+# print(test_perifocal)
+
 # test_orbit = TwoBodyKeplerOrbit.build_from_known_orbital_params([9056, 0.142, 7.2, 200, 60, 320], angle_type='deg', time_of_flight=0)
 # print(test_orbit)
 

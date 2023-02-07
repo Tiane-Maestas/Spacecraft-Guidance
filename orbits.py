@@ -151,6 +151,22 @@ class TwoBodyKeplerOrbit:
             self.hyperbolic_anomaly = 2 * numpy.arctanh(numpy.sqrt(self.eccentricity - 1) * numpy.tan(self.true_anomaly / 2) / numpy.sqrt(self.eccentricity + 1))
             self.mean_anomaly = numpy.mod((self.eccentricity * numpy.sinh(self.hyperbolic_anomaly) - self.hyperbolic_anomaly), 2 * numpy.pi)
 
+    @staticmethod
+    def convert_position_and_velocity_to_perifocal_frame(orbit):
+        """This will take in a pre-constructed orbit and return the position and velocity of the orbit from the perifocal frame."""
+        H = numpy.linalg.norm(orbit.angular_momentum)
+        e = orbit.eccentricity
+        theta = orbit.mean_anomaly
+
+        P = orbit.semi_major_axis * (1 - e**2)
+        gamma = P / (1 + e * numpy.cos(theta))
+
+        perifocal_position = [gamma * numpy.cos(theta), gamma * numpy.sin(theta), 0]
+        perifocal_velocity = [-1 * (TwoBodyKeplerOrbit.EARTH_MU / H) * (numpy.sin(theta)), (TwoBodyKeplerOrbit.EARTH_MU / H) * (e + numpy.cos(theta)), 0]
+
+        return (perifocal_position, perifocal_velocity)
+        
+
     ORBIT_INFO_FORMAT = "\n-----Orbit INFO-----\nOrbit Type: {orbit_type}\nPosition: {position}\nVelocity: {velocity}\nAngular Momentum(H): {angular_momentum}\nTotal Energy(E): {total_energy}\nSemi-Major Axis(a): {semi_major_axis}\nSemi-Minor Axis(b): {semi_minor_axis}\nParameter(p): {parameter}\nEccentricity(e): {eccentricity}\nPeriod(T): {period}\nPerigee: {perigee}\nApogee: {apogee}\nTrue Anomaly(f): {true_anomaly}\nFlight Path Angle(gamma): {flight_path_angle}\nMean Anomaly(M): {mean_anomaly}\n \
                          \n-----Orientation INFO-----\nRight Ascension of Ascending Node(Omega): {right_ascension_of_ascending_node}\nInclination(i): {inclination}\nArgument of Periapsis(w): {argument_of_periapsis}\n"
     def __str__(self) -> str:
