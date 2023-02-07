@@ -1,12 +1,13 @@
 from orbits import TwoBodyKeplerOrbit
 
-test_position = [-7208.2, -3822.1, 142.3]
-test_velocity = [4.0643, -6.0305, 0.8915]
-test_orbit = TwoBodyKeplerOrbit(test_position, test_velocity, angle_type='deg')
-print(test_orbit)
-
-# test_orbit = TwoBodyKeplerOrbit.build_from_known_params(9649.6, 0.2877, 180)
+# test_position = [-7208.2, -3822.1, 142.3]
+# test_velocity = [4.0643, -6.0305, 0.8915]
+# test_orbit = TwoBodyKeplerOrbit(test_position, test_velocity, angle_type='deg')
 # print(test_orbit)
+
+# old_test_params = [9649.6, 0.2877, 180]
+test_orbit = TwoBodyKeplerOrbit.build_from_known_orbital_params([9056, 0.142, 7.2, 200, 60, 320], angle_type='deg', time_of_flight=0)
+print(test_orbit)
 
 # test_orbit = TwoBodyKeplerOrbit.build_from_inertial_frame([-6796, 4025, 3490], [-3.7817, -6.0146, 1.1418])
 # print(test_orbit)
