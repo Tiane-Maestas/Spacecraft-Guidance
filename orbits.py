@@ -197,8 +197,30 @@ class OrbitUtilities:
         return -0.8000052947851282
     
     @staticmethod
-    def eccentric_anomaly_from_mean(M, e, tolerance=1e-14):
-        """"""
+    def calculate_velocity_gibbs(measured_positions):
+        """This function uses Gibbs method of orbital determination to calculate orbital velocity in the ECI frame given three known positions in the ECI frame. This returns the velocity of the middle position measurement."""
+        position1 = numpy.array(measured_positions[0])
+        position2 = numpy.array(measured_positions[1])
+        position3 = numpy.array(measured_positions[2])
+
+        # using this weird extra definition because numpy is bugged and it says code isn't reachable otherwise.
+        def cross(x, y): return numpy.cross(x, y)
+
+        c1 = numpy.linalg.norm(cross(position2, position3)) / numpy.linalg.norm(cross(position1, position3))
+        c3 = numpy.linalg.norm(cross(position2, position1)) / numpy.linalg.norm(cross(position3, position1))
+        r1 = numpy.linalg.norm(position1)
+        r2 = numpy.linalg.norm(position2)
+        r3 = numpy.linalg.norm(position3)
+
+        H = numpy.sqrt(TwoBodyKeplerOrbit.EARTH_MU * (r2 - c1 * r1 - c3 * r3) / (1 - c1 - c3))
+        h_hat = cross(position1, position3) / numpy.linalg.norm(cross(position1, position3))
+        angular_momentum_vector = H * h_hat
+
+        eccentricity_vector = (((H**2 / TwoBodyKeplerOrbit.EARTH_MU - r1) * cross(position3, h_hat)) - ((H**2 / TwoBodyKeplerOrbit.EARTH_MU - r3) * cross(position1, h_hat))) / numpy.linalg.norm(cross(position1, position3))
+        
+        calculated_velocity = cross((TwoBodyKeplerOrbit.EARTH_MU / H**2) * angular_momentum_vector, eccentricity_vector + position2 / r2)
+
+        return calculated_velocity
 
 # class TwoBodyKeplerOrbit:
 #     """A classic representation of two-body keplerian motion."""
