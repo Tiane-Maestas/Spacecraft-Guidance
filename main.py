@@ -7,7 +7,6 @@ from orbits import OrbitUtilities
 # test_orbit = TwoBodyKeplerOrbit(test_position, test_velocity, angle_type='deg')
 # print(test_orbit)
 
-# old_test_params = [9649.6, 0.2877, 180]
 # test_orbit = TwoBodyKeplerOrbit.build_from_known_orbital_params([9056, 0.142, 7.2, 200, 60, 320], angle_type='deg', time_of_flight=0)
 # print(test_orbit)
 
