@@ -56,8 +56,8 @@ class TwoBodyKeplerOrbit:
 
         orbit_type = KeplerOrbitTypes.get_orbit_type(ec)
 
-        # Orbital mean motion [ rad/s ]
-        nm = np.sqrt(OrbitUtilities.EARTH_MU / np.power(np.abs(a), 3))
+        # Orbital mean motion [ rad/s ] nm = sqrt(mu/abs(a)^3);
+        nm = OrbitUtilities.EARTH_MU / np.sqrt(np.power(float(np.abs(a)), 3))
         # Mean anomaly [ rad ]
         M = theta + nm * time_of_flight
 
@@ -193,25 +193,25 @@ class OrbitUtilities:
     EARTH_MU = 3.986e5  # km^3/s^2
 
     @staticmethod
-    def eccentric_anomaly_from_mean(M, e, tolerance=1e-14):
+    def eccentric_anomaly_from_mean(M, ec, tolerance=1e-14):
         """This will return an estimated Eccentric Anomaly given a Mean Anomaly (M) and eccentricity (e)"""
-        # Compute Eccentric anomaly
-        # def E(j):
-        # j = 1 # A priori estimate
-        # if ((-numpy.pi < M) and (M < 0)) or (M > numpy.pi):
-        #     E = M - e
-        # else:
-        #     E = M + e
+        # First make an initial guess at the Eccentric anomaly
+        E = 1
+        if ((-np.pi < M) and (M < 0)) or (M > np.pi):
+            E = M - ec
+        else:
+            E = M + ec
 
-        # # Newton iteration to find eccentric anomaly
-        # # Algorithm [goal: find E so that f = 0]
-        # f_E(j) = E(j) - ec*sin(E(j)) - M;
-        # while abs(f_E(j)) > 1e-11
-        #     E(j + 1) = E(j) - f_E(j)/(1 - ec*cos(E(j)));
-        #     j = j + 1;
-        #     f_E(j) = E(j) - ec*sin(E(j)) - M;
-        # end
-        return -0.8000052947851282
+        # Newton iteration to find eccentric anomaly [goal: find E so that f = 0 (i.e. find the roots for f)]
+        def f(Ea):
+            return Ea - ec * np.sin(Ea) - M # Kepler's Equ.
+        def df(Ea):
+            return (1 - ec * np.cos(Ea)) # Derivative of Kepler's Equ.
+
+        while np.abs(f(E)) > tolerance:
+            E = E - f(E) / df(E)
+
+        return E
     
     @staticmethod
     def calculate_velocity_gibbs(measured_positions):

@@ -24,15 +24,5 @@ from orbits import OrbitUtilities
 # test_orbit = TwoBodyKeplerOrbit(test_position, test_velocity, angle_type='deg')
 # print(test_orbit)
 
-test_position = OrbitUtilities.transform_position_SEZ_to_ECI([19.8, 283.5], [1298.4, 62.7, 158.2])
-print(test_position)
-
 # test_position = OrbitUtilities.transform_position_SEZ_to_ECI([19.8, 283.5], [1298.4, 62.7, 158.2])
-# test_measured_positions = [OrbitUtilities.transform_position_SEZ_to_ECI([19.8, 283.5], [1298.4, 62.7, 158.2]), 
-#                            test_position, 
-#                            OrbitUtilities.transform_position_SEZ_to_ECI([19.8, 283.5], [1298.4, 62.7, 158.2])]
-
-# test_velocity = OrbitUtilities.calculate_velocity_gibbs(test_measured_positions)
-
-# test_orbit = TwoBodyKeplerOrbit(test_position, test_velocity, angle_type='deg')
-# print(test_orbit)
+# print(test_position)
