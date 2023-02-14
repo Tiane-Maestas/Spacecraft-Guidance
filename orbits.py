@@ -67,7 +67,10 @@ class TwoBodyKeplerOrbit:
             # True anomaly [ rad ]
             f = np.mod(2 * np.arctan(np.sqrt((1 + ec)/(1 - ec)) * np.tan(E / 2)), 2 * np.pi)
         elif orbit_type == KeplerOrbitTypes.HYPERBOLIC:
-            pass # Yet to be implemented.
+            # Converged hyperbolic anomaly [ rad ]
+            H = OrbitUtilities.hyperbolic_anomaly_from_mean(M, ec)
+            # True anomaly [ rad ]
+            f = np.mod(2 * np.arctan(np.sqrt((ec + 1)/(ec - 1)) * np.tanh(H / 2)), 2 * np.pi)
 
         # Argument of Latitude
         u = w + f
@@ -125,9 +128,14 @@ class TwoBodyKeplerOrbit:
             self.parameter = self.semi_major_axis * (1 - np.power(self.eccentricity, 2))
             self.perigee = self.semi_major_axis * (1 - self.eccentricity) # Closest point
         
-        self.semi_minor_axis = self.semi_major_axis * np.sqrt(1 - self.eccentricity**2)
-        self.period = 2 * np.pi * np.sqrt(np.power(self.semi_major_axis, 3)/OrbitUtilities.EARTH_MU)
-        self.apogee = self.semi_major_axis * (1 + self.eccentricity) # Furthest point
+        if self.orbit_type == KeplerOrbitTypes.HYPERBOLIC:
+            self.semi_minor_axis = None
+            self.period = None
+            self.apogee = None # Furthest point
+        else:
+            self.semi_minor_axis = self.semi_major_axis * np.sqrt(1 - self.eccentricity**2)
+            self.period = 2 * np.pi * np.sqrt(np.power(self.semi_major_axis, 3)/OrbitUtilities.EARTH_MU)
+            self.apogee = self.semi_major_axis * (1 + self.eccentricity) # Furthest point
         
         # If the inclination is less than 90 degrees, hte elliptical orbit is a direct (prograde) orbit.
         self.inclination = np.arccos(np.dot(K, self.angular_momentum_hat))
@@ -194,7 +202,7 @@ class OrbitUtilities:
 
     @staticmethod
     def eccentric_anomaly_from_mean(M, ec, tolerance=1e-14):
-        """This will return an estimated Eccentric Anomaly given a Mean Anomaly (M) and eccentricity (e)"""
+        """This will return an estimated Eccentric Anomaly given a Mean Anomaly (M) and eccentricity (ec)"""
         # First make an initial guess at the Eccentric anomaly
         E = 1
         if ((-np.pi < M) and (M < 0)) or (M > np.pi):
@@ -212,6 +220,23 @@ class OrbitUtilities:
             E = E - f(E) / df(E)
 
         return E
+
+    @staticmethod
+    def hyperbolic_anomaly_from_mean(M, ec, tolerance=1e-14):
+        """This will return an estimated Hyperbolic Anomaly given a Mean Anomaly (M) and eccentricity (ec)"""
+        # First make an initial guess at the Eccentric anomaly
+        H = M
+
+        # Newton iteration to find hyperbolic anomaly [goal: find H so that f = 0 (i.e. find the roots for f)]
+        def f(Ha):
+            return ec * np.sinh(Ha) - M - Ha # Kepler's Equ.
+        def df(Ha):
+            return (ec * np.cosh(Ha) - 1) # Derivative of Kepler's Equ.
+
+        while np.abs(f(H)) > tolerance:
+            H = H - f(H) / df(H)
+
+        return H
     
     @staticmethod
     def calculate_velocity_gibbs(measured_positions):
