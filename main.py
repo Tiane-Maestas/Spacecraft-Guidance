@@ -18,8 +18,21 @@ from orbits import OrbitUtilities
 #                                                     [-9366.222, -17747.079, 18337.068]])
 # print(velocity)
 
-test_position = [63942.2, 37491.1, -23787.6]
-test_measured_positions = [[208668.2, 94880.1, -83019.1], test_position, [35211.9, 25745.8, -12098.5]]
-test_velocity = OrbitUtilities.calculate_velocity_gibbs(test_measured_positions)
-test_orbit = TwoBodyKeplerOrbit(test_position, test_velocity, angle_type='deg')
-print(test_orbit)
+# test_position = [63942.2, 37491.1, -23787.6]
+# test_measured_positions = [[208668.2, 94880.1, -83019.1], test_position, [35211.9, 25745.8, -12098.5]]
+# test_velocity = OrbitUtilities.calculate_velocity_gibbs(test_measured_positions)
+# test_orbit = TwoBodyKeplerOrbit(test_position, test_velocity, angle_type='deg')
+# print(test_orbit)
+
+test_position = OrbitUtilities.transform_position_SEZ_to_ECI([19.8, 283.5], [1298.4, 62.7, 158.2])
+print(test_position)
+
+# test_position = OrbitUtilities.transform_position_SEZ_to_ECI([19.8, 283.5], [1298.4, 62.7, 158.2])
+# test_measured_positions = [OrbitUtilities.transform_position_SEZ_to_ECI([19.8, 283.5], [1298.4, 62.7, 158.2]), 
+#                            test_position, 
+#                            OrbitUtilities.transform_position_SEZ_to_ECI([19.8, 283.5], [1298.4, 62.7, 158.2])]
+
+# test_velocity = OrbitUtilities.calculate_velocity_gibbs(test_measured_positions)
+
+# test_orbit = TwoBodyKeplerOrbit(test_position, test_velocity, angle_type='deg')
+# print(test_orbit)

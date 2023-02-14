@@ -1,5 +1,5 @@
 """This module holds tools for use with orbit calculations and representations."""
-import numpy
+import numpy as np
 
 
 class KeplerOrbitTypes:
@@ -24,9 +24,6 @@ class KeplerOrbitTypes:
 
 class TwoBodyKeplerOrbit:
     """A classic representation of two-body keplerian motion."""
-    # Known Constants
-    EARTH_RADIUS = 6378  # km
-    EARTH_MU = 3.986e5  # km^3/s^2
 
     def __init__(self, position_vector, velocity_vector, **options):
         """Initialize from a measured position and velocity in the cartesian ECI (Earth Centered Inertial) frame."""
@@ -34,8 +31,8 @@ class TwoBodyKeplerOrbit:
         self.angle_type = options[0] # This specifies what unit to print in.
         self.time_of_flight = options[1] # This variable doesn't do anything yet here.  
 
-        self.position_vector = numpy.array(position_vector)
-        self.velocity_vector = numpy.array(velocity_vector)
+        self.position_vector = np.array(position_vector)
+        self.velocity_vector = np.array(velocity_vector)
 
         self.calculate_orbit_info()
     
@@ -54,13 +51,13 @@ class TwoBodyKeplerOrbit:
         theta = orbital_params_list[5]
 
         if (angle_type == 'deg'):
-            i = numpy.radians(i); omega = numpy.radians(omega); w = numpy.radians(w); theta = numpy.radians(theta)
-        i = numpy.mod(i, 2 * numpy.pi); omega = numpy.mod(omega, 2 * numpy.pi); w = numpy.mod(w, 2 * numpy.pi); theta = numpy.mod(theta, 2 * numpy.pi)
+            i = np.radians(i); omega = np.radians(omega); w = np.radians(w); theta = np.radians(theta)
+        i = np.mod(i, 2 * np.pi); omega = np.mod(omega, 2 * np.pi); w = np.mod(w, 2 * np.pi); theta = np.mod(theta, 2 * np.pi)
 
         orbit_type = KeplerOrbitTypes.get_orbit_type(ec)
 
         # Orbital mean motion [ rad/s ]
-        nm = numpy.sqrt(TwoBodyKeplerOrbit.EARTH_MU / numpy.power(numpy.abs(a), 3))
+        nm = np.sqrt(OrbitUtilities.EARTH_MU / np.power(np.abs(a), 3))
         # Mean anomaly [ rad ]
         M = theta + nm * time_of_flight
 
@@ -68,24 +65,24 @@ class TwoBodyKeplerOrbit:
             # Converged eccentric anomaly [ rad ]
             E = OrbitUtilities.eccentric_anomaly_from_mean(M, ec)
             # True anomaly [ rad ]
-            f = numpy.mod(2 * numpy.arctan(numpy.sqrt((1 + ec)/(1 - ec)) * numpy.tan(E / 2)), 2 * numpy.pi)
+            f = np.mod(2 * np.arctan(np.sqrt((1 + ec)/(1 - ec)) * np.tan(E / 2)), 2 * np.pi)
         elif orbit_type == KeplerOrbitTypes.HYPERBOLIC:
             pass # Yet to be implemented.
 
         # Argument of Latitude
         u = w + f
         
-        r = a * (1 - ec**2) / (1 + ec * numpy.cos(f))
-        v = numpy.sqrt(TwoBodyKeplerOrbit.EARTH_MU * (2 / r - 1 / a))
+        r = a * (1 - ec**2) / (1 + ec * np.cos(f))
+        v = np.sqrt(OrbitUtilities.EARTH_MU * (2 / r - 1 / a))
 
         # Ascending node vector
-        nhat = numpy.array([ numpy.cos(omega) , numpy.sin(omega), 0 ])
-        rT   = numpy.array([ -1 * numpy.cos(i) * numpy.sin(omega), numpy.cos(i) * numpy.cos(omega), numpy.sin(i) ])
+        nhat = np.array([ np.cos(omega) , np.sin(omega), 0 ])
+        rT   = np.array([ -1 * np.cos(i) * np.sin(omega), np.cos(i) * np.cos(omega), np.sin(i) ])
 
-        gamma = numpy.arctan2(ec * numpy.sin(f), 1 + ec * numpy.cos(f))
+        gamma = np.arctan2(ec * np.sin(f), 1 + ec * np.cos(f))
 
-        rhat = numpy.cos(u) * nhat + numpy.sin(u) * rT
-        vhat = numpy.sin(gamma - u) * nhat + numpy.cos(gamma - u) * rT
+        rhat = np.cos(u) * nhat + np.sin(u) * rT
+        vhat = np.sin(gamma - u) * nhat + np.cos(gamma - u) * rT
 
         position_vector = r * rhat
         velocity_vector = v * vhat
@@ -98,71 +95,71 @@ class TwoBodyKeplerOrbit:
     def calculate_orbit_info(self) -> None:
         """This calculates all of the info that can be displayed via this 'to string' method."""
         # using this weird extra definition because numpy is bugged and it says code isn't reachable otherwise.
-        def cross(x, y): return numpy.cross(x, y)
+        def cross(x, y): return np.cross(x, y)
 
         #  ECI Coordinate frame unit vectors
-        I = numpy.array([1, 0, 0]); J = numpy.array([0, 1, 0]); K = numpy.array([0, 0, 1])
+        I = np.array([1, 0, 0]); J = np.array([0, 1, 0]); K = np.array([0, 0, 1])
 
         # Angular momentum is orthogonal to orbital plane.
         self.angular_momentum = cross(self.position_vector, self.velocity_vector)
 
-        self.position_hat = self.position_vector / numpy.linalg.norm(self.position_vector)
-        self.angular_momentum_hat = self.angular_momentum / numpy.linalg.norm(self.angular_momentum)
+        self.position_hat = self.position_vector / np.linalg.norm(self.position_vector)
+        self.angular_momentum_hat = self.angular_momentum / np.linalg.norm(self.angular_momentum)
 
         # Normalized ascending node vector.
-        self.ascending_node_hat = cross(K, self.angular_momentum) / numpy.linalg.norm(cross(K, self.angular_momentum)) 
+        self.ascending_node_hat = cross(K, self.angular_momentum) / np.linalg.norm(cross(K, self.angular_momentum)) 
 
-        self.total_energy = 0.5 * numpy.dot(self.velocity_vector, self.velocity_vector) - TwoBodyKeplerOrbit.EARTH_MU / numpy.linalg.norm(self.position_vector)
+        self.total_energy = 0.5 * np.dot(self.velocity_vector, self.velocity_vector) - OrbitUtilities.EARTH_MU / np.linalg.norm(self.position_vector)
 
         # Eccentricity
-        self.eccentricity_vector = 1 / TwoBodyKeplerOrbit.EARTH_MU * cross(self.velocity_vector, self.angular_momentum) - self.position_hat
-        self.eccentricity =  numpy.linalg.norm(self.eccentricity_vector)
+        self.eccentricity_vector = 1 / OrbitUtilities.EARTH_MU * cross(self.velocity_vector, self.angular_momentum) - self.position_hat
+        self.eccentricity =  np.linalg.norm(self.eccentricity_vector)
         self.orbit_type = KeplerOrbitTypes.get_orbit_type(self.eccentricity)
         
         # If orbit_type is 'parabolic' energy is 0.
         if self.orbit_type == KeplerOrbitTypes.PARABOLIC:
-            self.semi_major_axis = numpy.Inf
-            self.parameter = numpy.dot(self.angular_momentum, self.angular_momentum) / TwoBodyKeplerOrbit.EARTH_MU
+            self.semi_major_axis = np.Inf
+            self.parameter = np.dot(self.angular_momentum, self.angular_momentum) / OrbitUtilities.EARTH_MU
         else:
-            self.semi_major_axis = -1 * TwoBodyKeplerOrbit.EARTH_MU / (2 * self.total_energy)
-            self.parameter = self.semi_major_axis * (1 - numpy.power(self.eccentricity, 2))
+            self.semi_major_axis = -1 * OrbitUtilities.EARTH_MU / (2 * self.total_energy)
+            self.parameter = self.semi_major_axis * (1 - np.power(self.eccentricity, 2))
             self.perigee = self.semi_major_axis * (1 - self.eccentricity) # Closest point
         
-        self.semi_minor_axis = self.semi_major_axis * numpy.sqrt(1 - self.eccentricity**2)
-        self.period = 2 * numpy.pi * numpy.sqrt(numpy.power(self.semi_major_axis, 3)/TwoBodyKeplerOrbit.EARTH_MU)
+        self.semi_minor_axis = self.semi_major_axis * np.sqrt(1 - self.eccentricity**2)
+        self.period = 2 * np.pi * np.sqrt(np.power(self.semi_major_axis, 3)/OrbitUtilities.EARTH_MU)
         self.apogee = self.semi_major_axis * (1 + self.eccentricity) # Furthest point
         
         # If the inclination is less than 90 degrees, hte elliptical orbit is a direct (prograde) orbit.
-        self.inclination = numpy.arccos(numpy.dot(K, self.angular_momentum_hat))
+        self.inclination = np.arccos(np.dot(K, self.angular_momentum_hat))
 
-        self.right_ascension_of_ascending_node = numpy.mod(numpy.arctan2(numpy.dot(J, self.ascending_node_hat), numpy.dot(I, self.ascending_node_hat)), 2 * numpy.pi)
+        self.right_ascension_of_ascending_node = np.mod(np.arctan2(np.dot(J, self.ascending_node_hat), np.dot(I, self.ascending_node_hat)), 2 * np.pi)
 
-        self.argument_of_periapsis = numpy.mod(numpy.arctan2(numpy.dot(self.angular_momentum_hat, cross(self.ascending_node_hat, self.eccentricity_vector)), numpy.dot(self.ascending_node_hat, self.eccentricity_vector)), 2 * numpy.pi)
+        self.argument_of_periapsis = np.mod(np.arctan2(np.dot(self.angular_momentum_hat, cross(self.ascending_node_hat, self.eccentricity_vector)), np.dot(self.ascending_node_hat, self.eccentricity_vector)), 2 * np.pi)
 
-        self.true_anomaly = numpy.mod(numpy.arctan2(numpy.dot(self.angular_momentum_hat, cross(self.eccentricity_vector, self.position_vector)), numpy.dot(self.eccentricity_vector, self.position_vector)), 2 * numpy.pi)
+        self.true_anomaly = np.mod(np.arctan2(np.dot(self.angular_momentum_hat, cross(self.eccentricity_vector, self.position_vector)), np.dot(self.eccentricity_vector, self.position_vector)), 2 * np.pi)
 
-        self.flight_path_angle = numpy.degrees(numpy.arctan(self.eccentricity * numpy.sin(self.true_anomaly) / (1 + self.eccentricity * numpy.cos(self.true_anomaly))))
+        self.flight_path_angle = np.degrees(np.arctan(self.eccentricity * np.sin(self.true_anomaly) / (1 + self.eccentricity * np.cos(self.true_anomaly))))
 
         if (self.orbit_type == KeplerOrbitTypes.ELIPTICAL) or (self.orbit_type == KeplerOrbitTypes.CIRCULAR):
             # Eccentric and Mean anomaly at epoch.
-            self.eccentric_anomaly = 2 * numpy.arctan2(numpy.sqrt(1 - self.eccentricity) * numpy.tan(self.true_anomaly / 2), numpy.sqrt(1 + self.eccentricity))
-            self.mean_anomaly = numpy.mod((self.eccentric_anomaly - self.eccentricity * numpy.sin(self.eccentric_anomaly)), 2 * numpy.pi)
+            self.eccentric_anomaly = 2 * np.arctan2(np.sqrt(1 - self.eccentricity) * np.tan(self.true_anomaly / 2), np.sqrt(1 + self.eccentricity))
+            self.mean_anomaly = np.mod((self.eccentric_anomaly - self.eccentricity * np.sin(self.eccentric_anomaly)), 2 * np.pi)
         elif self.orbit_type == KeplerOrbitTypes.HYPERBOLIC:
-            self.hyperbolic_anomaly = 2 * numpy.arctanh(numpy.sqrt(self.eccentricity - 1) * numpy.tan(self.true_anomaly / 2) / numpy.sqrt(self.eccentricity + 1))
-            self.mean_anomaly = numpy.mod((self.eccentricity * numpy.sinh(self.hyperbolic_anomaly) - self.hyperbolic_anomaly), 2 * numpy.pi)
+            self.hyperbolic_anomaly = 2 * np.arctanh(np.sqrt(self.eccentricity - 1) * np.tan(self.true_anomaly / 2) / np.sqrt(self.eccentricity + 1))
+            self.mean_anomaly = np.mod((self.eccentricity * np.sinh(self.hyperbolic_anomaly) - self.hyperbolic_anomaly), 2 * np.pi)
 
     @staticmethod
     def convert_position_and_velocity_to_perifocal_frame(orbit):
         """This will take in a pre-constructed orbit and return the position and velocity of the orbit from the perifocal frame."""
-        H = numpy.linalg.norm(orbit.angular_momentum)
+        H = np.linalg.norm(orbit.angular_momentum)
         e = orbit.eccentricity
         theta = orbit.mean_anomaly
 
         P = orbit.semi_major_axis * (1 - e**2)
-        gamma = P / (1 + e * numpy.cos(theta))
+        gamma = P / (1 + e * np.cos(theta))
 
-        perifocal_position = [gamma * numpy.cos(theta), gamma * numpy.sin(theta), 0]
-        perifocal_velocity = [-1 * (TwoBodyKeplerOrbit.EARTH_MU / H) * (numpy.sin(theta)), (TwoBodyKeplerOrbit.EARTH_MU / H) * (e + numpy.cos(theta)), 0]
+        perifocal_position = [gamma * np.cos(theta), gamma * np.sin(theta), 0]
+        perifocal_velocity = [-1 * (OrbitUtilities.EARTH_MU / H) * (np.sin(theta)), (OrbitUtilities.EARTH_MU / H) * (e + np.cos(theta)), 0]
 
         return (perifocal_position, perifocal_velocity)
         
@@ -173,7 +170,7 @@ class TwoBodyKeplerOrbit:
         true_anomaly = self.true_anomaly; flight_path_angle = self.flight_path_angle; mean_anomaly = self.mean_anomaly; right_ascension_of_ascending_node = self.right_ascension_of_ascending_node; inclination = self.inclination; argument_of_periapsis = self.argument_of_periapsis
         a_unit = 'rad'
         if(self.angle_type == 'deg'):
-            true_anomaly = numpy.degrees(true_anomaly); flight_path_angle = numpy.degrees(flight_path_angle); mean_anomaly = numpy.degrees(mean_anomaly); right_ascension_of_ascending_node = numpy.degrees(right_ascension_of_ascending_node); inclination = numpy.degrees(inclination); argument_of_periapsis = numpy.degrees(argument_of_periapsis)
+            true_anomaly = np.degrees(true_anomaly); flight_path_angle = np.degrees(flight_path_angle); mean_anomaly = np.degrees(mean_anomaly); right_ascension_of_ascending_node = np.degrees(right_ascension_of_ascending_node); inclination = np.degrees(inclination); argument_of_periapsis = np.degrees(argument_of_periapsis)
             a_unit = 'deg'
         return TwoBodyKeplerOrbit.ORBIT_INFO_FORMAT.format(orbit_type=self.orbit_type, position=self.position_vector, velocity=self.velocity_vector, angular_momentum=self.angular_momentum, total_energy=self.total_energy, semi_major_axis=self.semi_major_axis, semi_minor_axis=self.semi_minor_axis, parameter=self.parameter, eccentricity=self.eccentricity, period=self.period, perigee=self.perigee, apogee=self.apogee, true_anomaly=true_anomaly, flight_path_angle=flight_path_angle, mean_anomaly=mean_anomaly, right_ascension_of_ascending_node=right_ascension_of_ascending_node, inclination=inclination, argument_of_periapsis=argument_of_periapsis, a_unit=a_unit)
 
@@ -190,7 +187,10 @@ class TwoBodyKeplerOrbit:
 
 
 class OrbitUtilities:
-    """This is a collection of utitity function for orbital calculations."""
+    """This is a collection of utitity functions and constants for orbital calculations."""
+    # Known Constants
+    EARTH_RADIUS = 6378  # km
+    EARTH_MU = 3.986e5  # km^3/s^2
 
     @staticmethod
     def eccentric_anomaly_from_mean(M, e, tolerance=1e-14):
@@ -216,25 +216,48 @@ class OrbitUtilities:
     @staticmethod
     def calculate_velocity_gibbs(measured_positions):
         """This function uses Gibbs method of orbital determination to calculate orbital velocity in the ECI frame given three known positions in the ECI frame. This returns the velocity of the middle position measurement."""
-        position1 = numpy.array(measured_positions[0])
-        position2 = numpy.array(measured_positions[1])
-        position3 = numpy.array(measured_positions[2])
+        position1 = np.array(measured_positions[0])
+        position2 = np.array(measured_positions[1])
+        position3 = np.array(measured_positions[2])
 
         # using this weird extra definition because numpy is bugged and it says code isn't reachable otherwise.
-        def cross(x, y): return numpy.cross(x, y)
+        def cross(x, y): return np.cross(x, y)
 
-        c1 = numpy.linalg.norm(cross(position2, position3)) / numpy.linalg.norm(cross(position1, position3))
-        c3 = numpy.linalg.norm(cross(position2, position1)) / numpy.linalg.norm(cross(position3, position1))
-        r1 = numpy.linalg.norm(position1)
-        r2 = numpy.linalg.norm(position2)
-        r3 = numpy.linalg.norm(position3)
+        c1 = np.linalg.norm(cross(position2, position3)) / np.linalg.norm(cross(position1, position3))
+        c3 = np.linalg.norm(cross(position2, position1)) / np.linalg.norm(cross(position3, position1))
+        r1 = np.linalg.norm(position1)
+        r2 = np.linalg.norm(position2)
+        r3 = np.linalg.norm(position3)
 
-        H = numpy.sqrt(TwoBodyKeplerOrbit.EARTH_MU * (r2 - c1 * r1 - c3 * r3) / (1 - c1 - c3))
-        h_hat = cross(position1, position3) / numpy.linalg.norm(cross(position1, position3))
+        H = np.sqrt(OrbitUtilities.EARTH_MU * (r2 - c1 * r1 - c3 * r3) / (1 - c1 - c3))
+        h_hat = cross(position1, position3) / np.linalg.norm(cross(position1, position3))
         angular_momentum_vector = H * h_hat
 
-        eccentricity_vector = (((H**2 / TwoBodyKeplerOrbit.EARTH_MU - r1) * cross(position3, h_hat)) - ((H**2 / TwoBodyKeplerOrbit.EARTH_MU - r3) * cross(position1, h_hat))) / numpy.linalg.norm(cross(position1, position3))
+        eccentricity_vector = (((H**2 / OrbitUtilities.EARTH_MU - r1) * cross(position3, h_hat)) - ((H**2 / OrbitUtilities.EARTH_MU - r3) * cross(position1, h_hat))) / np.linalg.norm(cross(position1, position3))
         
-        calculated_velocity = cross((TwoBodyKeplerOrbit.EARTH_MU / H**2) * angular_momentum_vector, eccentricity_vector + position2 / r2)
+        calculated_velocity = cross((OrbitUtilities.EARTH_MU / H**2) * angular_momentum_vector, eccentricity_vector + position2 / r2)
 
         return calculated_velocity
+    
+    @staticmethod
+    def transform_position_SEZ_to_ECI(observation_lat_long, line_of_sight_elements):
+        """This will take a location on earth and a position measurment of an orbit in South-East-Zenith(SEZ) coordinates and convert the position to ECI coordinates.
+        'observation_lat_long' and 'line_of_sight_elements' are lists [latitude, longitude] and [distance, elevation, azimuth] (Note: all angles are given in degrees and longitude is from I axis)."""
+        lat = np.radians(observation_lat_long[0])
+        long = np.radians(observation_lat_long[1])
+
+        dist = line_of_sight_elements[0]
+        ele = np.radians(line_of_sight_elements[1])
+        azi = np.radians(line_of_sight_elements[2])
+
+        r_site_hat = np.array([np.cos(lat) * np.cos(long), np.cos(lat) * np.sin(long), np.sin(lat)])
+        r_site_vector = OrbitUtilities.EARTH_RADIUS * r_site_hat
+
+        p_vector_hat = np.array([-1 * np.cos(ele) * np.cos(azi), np.cos(ele) * np.sin(azi), np.sin(ele)])
+        p_vector = dist * p_vector_hat
+
+        sez_to_eci_transformation_matrix = np.matrix([[np.sin(lat) * np.cos(long), -1 * np.sin(long), np.cos(lat) * np.cos(long)], 
+                                                      [np.sin(lat) * np.sin(long), np.cos(long), np.cos(lat) * np.sin(long)], 
+                                                      [-1 * np.cos(lat), 0, np.sin(lat)]])
+
+        return r_site_vector + np.array(np.matmul(sez_to_eci_transformation_matrix, p_vector))[0]
