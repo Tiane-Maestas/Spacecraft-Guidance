@@ -49,30 +49,3 @@ from orbits import OrbitUtilities
 # test_orbit.propagate_true_anomaly(200)
 # print(test_orbit)
 # print(TwoBodyKeplerOrbit.convert_position_and_velocity_to_perifocal_frame(test_orbit))
-
-
-import numpy as np
-def problem_416(a, e, theta_1, tof):
-    theta_1 = np.radians(theta_1)
-    E = 2 * np.arctan((np.sqrt(1 - e) / np.sqrt(1 + e)) * np.tan(theta_1 / 2))
-    M = E - e * np.sin(E)
-
-    nm = np.sqrt(OrbitUtilities.EARTH_MU / np.power(float(np.abs(a)), 3))  
-    M_2 = M + nm * tof
-
-    E_2 = OrbitUtilities.eccentric_anomaly_from_mean(M_2, e)
-    
-    theta_2 = 2 * np.arctan((np.sqrt(1 + e) / np.sqrt(1 - e)) * np.tan(E_2 / 2)) # new true anomaly
-    r = a * (1 - e**2) / (1 + e * np.cos(theta_2)) # new distance
-    fpa = np.degrees(np.arctan(e * np.sin(theta_2) / (1 + e * np.cos(theta_2)))) # new flight path angle
-    v = np.sqrt(OrbitUtilities.EARTH_MU / a * (1 - e) / (1 + e))
-
-    theta_2 = np.degrees(theta_2)
-    print(theta_2)
-    print(r)
-    print(fpa)
-    print(v)
-
-
-
-problem_416(26564.5, 0.7411, 260, 3000)
