@@ -95,8 +95,8 @@ class TwoBodyKeplerOrbit:
     def update(self, radial_vector, velocity_vector) -> None:
         """Not sure about this yet."""
     
-    def propogate_true_anomaly(self, delta_true_anomaly) -> float:
-        """This will increase the mean anomaly by the given amount and recalculate orbit position ext. This function returns the time of flight this propogation took."""
+    def propagate_true_anomaly(self, delta_true_anomaly) -> float:
+        """This will increase the mean anomaly by the given amount and recalculate orbit position ext. This function returns the time of flight this propagation took."""
         if self.angle_type == 'deg':
             delta_true_anomaly = np.radians(delta_true_anomaly)
 
@@ -122,9 +122,9 @@ class TwoBodyKeplerOrbit:
         rhat = np.cos(u) * nhat + np.sin(u) * rT
         vhat = np.sin(gamma - u) * nhat + np.cos(gamma - u) * rT
 
-        self.position_vector = r * rhat
-        self.position_hat = rhat
-        self.velocity_vector = v * vhat
+        self.position_vector = r * rhat # Not sure if these are updated correctly
+        self.position_hat = rhat # Not sure if these are updated correctly
+        self.velocity_vector = v * vhat # Not sure if these are updated correctly
         
         # Fix Mean Anomaly and Find TOF.
         eccentric_anomaly = 2 * np.arctan((np.sqrt(1 - self.eccentricity) / np.sqrt(1 + self.eccentricity)) * np.tan(self.true_anomaly / 2))
@@ -212,8 +212,8 @@ class TwoBodyKeplerOrbit:
         P = orbit.semi_major_axis * (1 - e**2)
         gamma = P / (1 + e * np.cos(theta))
 
-        perifocal_position = [gamma * np.cos(theta), gamma * np.sin(theta), 0]
-        perifocal_velocity = [-1 * (OrbitUtilities.EARTH_MU / H) * (np.sin(theta)), (OrbitUtilities.EARTH_MU / H) * (e + np.cos(theta)), 0]
+        perifocal_position = np.array([gamma * np.cos(theta), gamma * np.sin(theta)])
+        perifocal_velocity = np.array([-1 * (OrbitUtilities.EARTH_MU / H) * (np.sin(theta)), (OrbitUtilities.EARTH_MU / H) * (e + np.cos(theta))])
 
         return (perifocal_position, perifocal_velocity)
         
@@ -332,3 +332,32 @@ class OrbitUtilities:
                                                       [-1 * np.cos(lat), 0, np.sin(lat)]])
 
         return r_site_vector + np.array(np.matmul(sez_to_eci_transformation_matrix, p_vector))[0]
+    
+    @staticmethod
+    def propagate_true_anomaly_lagrange_perifocal(orbit, delta_true_anomaly) -> None:
+        """This will use lagrange method to propagate position and velocity in perifocal frame given change in true anomaly."""
+        if orbit.angle_type == 'deg':
+            delta_true_anomaly = np.radians(delta_true_anomaly)
+
+        r_v = TwoBodyKeplerOrbit.convert_position_and_velocity_to_perifocal_frame(orbit)
+        position = r_v[0]
+        velocity = r_v[1]
+
+        # Constants needed for Lagrange Coefficients
+        r_0 = np.linalg.norm(position)
+        v_0 = np.linalg.norm(velocity)
+        v_r_0 = np.dot(position, velocity) / r_0
+        h = r_0 * np.sqrt(v_0**2 - v_r_0**2)
+        b = h**2 / OrbitUtilities.EARTH_MU
+        r = b * (1 / (1 + (b / r_0 - 1) * np.cos(delta_true_anomaly) - (b / h) * v_r_0 * np.sin(delta_true_anomaly)))
+
+        # Lagrange Coefficients -> Transformation Matrix -> Propagated Position and Velocity
+        f = 1 - (1 / b) * r * (1 - np.cos(delta_true_anomaly))
+        g = r * r_0 / h * np.sin(delta_true_anomaly)
+        f_dot = (h / b) * ((1 - np.cos(delta_true_anomaly)) / np.sin(delta_true_anomaly)) * (1 / b * (1 - np.cos(delta_true_anomaly)) - 1 / r_0 - 1 / r)
+        g_dot = 1 - 1 / b * r_0 * (1 - np.cos(delta_true_anomaly))
+        
+        new_position = f * position + g * velocity
+        new_velocity = f_dot * position + g_dot * velocity
+
+        return (new_position, new_velocity)
