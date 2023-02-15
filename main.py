@@ -42,10 +42,10 @@ from orbits import OrbitUtilities
 # print(test_orbit)
 
 # -----Testing Propagate True Anomaly Lagrange Perifocal-----
-# test_orbit = TwoBodyKeplerOrbit([-6796, 4025, 3490], [-3.7817, -6.0146, 1.1418], angle_type='deg')
-# test_pos_vel = OrbitUtilities.propagate_true_anomaly_lagrange_perifocal(test_orbit, 200)
-# print(test_pos_vel)
+test_orbit = TwoBodyKeplerOrbit([-6796, 4025, 3490], [-3.7817, -6.0146, 1.1418], angle_type='deg')
+test_pos_vel = OrbitUtilities.propagate_true_anomaly_lagrange_perifocal(test_orbit, 200)
+print(test_pos_vel)
 # Compare to my propagation (Doesn't give same answer yet...)
-# test_orbit.propagate_true_anomaly(200)
-# print(test_orbit)
-# print(TwoBodyKeplerOrbit.convert_position_and_velocity_to_perifocal_frame(test_orbit))
+test_orbit.propagate_true_anomaly(200)
+print(test_orbit)
+print(TwoBodyKeplerOrbit.convert_position_and_velocity_to_perifocal_frame(test_orbit))

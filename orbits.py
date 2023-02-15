@@ -340,8 +340,10 @@ class OrbitUtilities:
             delta_true_anomaly = np.radians(delta_true_anomaly)
 
         r_v = TwoBodyKeplerOrbit.convert_position_and_velocity_to_perifocal_frame(orbit)
-        position = r_v[0]
-        velocity = r_v[1]
+        # position = r_v[0]
+        # velocity = r_v[1]
+        position = orbit.position_vector
+        velocity = orbit.velocity_vector
 
         # Constants needed for Lagrange Coefficients
         r_0 = np.linalg.norm(position)
