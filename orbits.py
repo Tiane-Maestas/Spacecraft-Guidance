@@ -38,7 +38,7 @@ class TwoBodyKeplerOrbit:
     
     @classmethod
     def build_from_known_orbital_params(cls, orbital_params_list, **options):
-        """Initialize from a list of known orbital parameters. [semimajor axis (a), eccentricity (ec), inclination (i), longitude of the ascending node (omega), argument of periapsis (w), mean or hyperbolic anomaly at epoch (theta)]"""
+        """Initialize from a list of known orbital parameters. [semimajor axis (a), eccentricity (ec), inclination (i), right ascension of the ascending node (omega), argument of periapsis (w), mean or hyperbolic anomaly at epoch (theta)]"""
         options = TwoBodyKeplerOrbit.process_optional_params(options)
         angle_type = options[0]
         time_of_flight = options[1]
@@ -56,8 +56,8 @@ class TwoBodyKeplerOrbit:
 
         orbit_type = KeplerOrbitTypes.get_orbit_type(ec)
 
-        # Orbital mean motion [ rad/s ] nm = sqrt(mu/abs(a)^3);
-        nm = OrbitUtilities.EARTH_MU / np.sqrt(np.power(float(np.abs(a)), 3))
+        # Orbital mean motion [ rad/s ]
+        nm = np.sqrt(OrbitUtilities.EARTH_MU / np.power(float(np.abs(a)), 3))
         # Mean anomaly [ rad ]
         M = theta + nm * time_of_flight
 
@@ -94,6 +94,49 @@ class TwoBodyKeplerOrbit:
 
     def update(self, radial_vector, velocity_vector) -> None:
         """Not sure about this yet."""
+    
+    def propogate_true_anomaly(self, delta_true_anomaly) -> float:
+        """This will increase the mean anomaly by the given amount and recalculate orbit position ext. This function returns the time of flight this propogation took."""
+        if self.angle_type == 'deg':
+            delta_true_anomaly = np.radians(delta_true_anomaly)
+
+        self.true_anomaly = np.mod(self.true_anomaly + delta_true_anomaly, 2 * np.pi)
+
+        # Fix position given new true anomaly.
+        f = self.true_anomaly
+        ec = self.eccentricity
+        a = self.semi_major_axis
+        i = self.inclination
+        w = self.argument_of_periapsis
+        omega = self.right_ascension_of_ascending_node
+
+        u = w + f
+        r = a * (1 - ec**2) / (1 + ec * np.cos(f))
+        v = np.sqrt(OrbitUtilities.EARTH_MU * (2 / r - 1 / a))
+
+        # Ascending node vector
+        nhat = np.array([ np.cos(omega) , np.sin(omega), 0 ])
+        rT   = np.array([ -1 * np.cos(i) * np.sin(omega), np.cos(i) * np.cos(omega), np.sin(i) ])
+        gamma = np.arctan2(ec * np.sin(f), 1 + ec * np.cos(f))
+
+        rhat = np.cos(u) * nhat + np.sin(u) * rT
+        vhat = np.sin(gamma - u) * nhat + np.cos(gamma - u) * rT
+
+        self.position_vector = r * rhat
+        self.position_hat = rhat
+        self.velocity_vector = v * vhat
+        
+        # Fix Mean Anomaly and Find TOF.
+        eccentric_anomaly = 2 * np.arctan((np.sqrt(1 - self.eccentricity) / np.sqrt(1 + self.eccentricity)) * np.tan(self.true_anomaly / 2))
+        old_mean_anomaly = self.mean_anomaly
+        self.mean_anomaly = eccentric_anomaly - self.eccentricity * np.sin(eccentric_anomaly)
+
+        if self.mean_anomaly < 0:
+            self.mean_anomaly += 2 * np.pi
+        
+        time_of_flight = (self.mean_anomaly - old_mean_anomaly) / (self.mean_motion)
+
+        return time_of_flight
 
     def calculate_orbit_info(self) -> None:
         """This calculates all of the info that can be displayed via this 'to string' method."""
@@ -155,6 +198,9 @@ class TwoBodyKeplerOrbit:
         elif self.orbit_type == KeplerOrbitTypes.HYPERBOLIC:
             self.hyperbolic_anomaly = 2 * np.arctanh(np.sqrt(self.eccentricity - 1) * np.tan(self.true_anomaly / 2) / np.sqrt(self.eccentricity + 1))
             self.mean_anomaly = np.mod((self.eccentricity * np.sinh(self.hyperbolic_anomaly) - self.hyperbolic_anomaly), 2 * np.pi)
+        
+        # Orbital mean motion [ rad/s ] (The same as {2pi / Period})
+        self.mean_motion = np.sqrt(OrbitUtilities.EARTH_MU / np.power(float(np.abs(self.semi_major_axis)), 3))
 
     @staticmethod
     def convert_position_and_velocity_to_perifocal_frame(orbit):

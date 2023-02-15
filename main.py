@@ -35,3 +35,9 @@ from orbits import OrbitUtilities
 # -----Testing SEZ to ECI Transform-----
 # test_position = OrbitUtilities.transform_position_SEZ_to_ECI([19.8, 283.5], [1298.4, 62.7, 158.2])
 # print(test_position)
+
+# -----Testing Mean Anomaly Propogation-----
+# test_orbit = TwoBodyKeplerOrbit([-6796, 4025, 3490], [-3.7817, -6.0146, 1.1418], angle_type='deg')
+# print(str(test_orbit.propogate_true_anomaly(200)) + ' [s]')
+# print(test_orbit)
+
