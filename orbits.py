@@ -29,20 +29,20 @@ class TwoBodyKeplerOrbit:
         """Initialize from a measured position and velocity in the cartesian ECI (Earth Centered Inertial) frame."""
         options = TwoBodyKeplerOrbit.process_optional_params(options)
         self.angle_type = options[0] # This specifies what unit to print in.
-        self.time_of_flight = options[1] # This variable doesn't do anything yet here.  
+        self.time_of_flight = options[1] # This variable doesn't do anything yet here.
 
         self.position_vector = np.array(position_vector)
         self.velocity_vector = np.array(velocity_vector)
 
         self.calculate_orbit_info()
-    
+
     @classmethod
     def build_from_known_orbital_params(cls, orbital_params_list, **options):
         """Initialize from a list of known orbital parameters. [semimajor axis (a), eccentricity (ec), inclination (i), right ascension of the ascending node (omega), argument of periapsis (w), mean or hyperbolic anomaly at epoch (theta)]"""
         options = TwoBodyKeplerOrbit.process_optional_params(options)
         angle_type = options[0]
         time_of_flight = options[1]
-        
+
         a = orbital_params_list[0]
         ec = orbital_params_list[1]
         i = orbital_params_list[2]
@@ -74,7 +74,7 @@ class TwoBodyKeplerOrbit:
 
         # Argument of Latitude
         u = w + f
-        
+
         r = a * (1 - ec**2) / (1 + ec * np.cos(f))
         v = np.sqrt(OrbitUtilities.EARTH_MU * (2 / r - 1 / a))
 
@@ -89,14 +89,14 @@ class TwoBodyKeplerOrbit:
 
         position_vector = r * rhat
         velocity_vector = v * vhat
-        
+
         return cls(position_vector, velocity_vector, angle_type=angle_type, time_of_flight=time_of_flight)
 
     def update(self, radial_vector, velocity_vector) -> None:
         """Not sure about this yet."""
-    
+
     def propagate_true_anomaly(self, delta_true_anomaly) -> float:
-        """This will increase the mean anomaly by the given amount and recalculate orbit position ext. This function returns the time of flight this propagation took."""
+        """This will increase the true anomaly by the given amount and re-calculate the changed orbital elements. This function returns the time of flight this propagation took."""
         if self.angle_type == 'deg':
             delta_true_anomaly = np.radians(delta_true_anomaly)
 
@@ -114,7 +114,6 @@ class TwoBodyKeplerOrbit:
         r = a * (1 - ec**2) / (1 + ec * np.cos(f))
         v = np.sqrt(OrbitUtilities.EARTH_MU * (2 / r - 1 / a))
 
-        # Ascending node vector
         nhat = np.array([ np.cos(omega) , np.sin(omega), 0 ])
         rT   = np.array([ -1 * np.cos(i) * np.sin(omega), np.cos(i) * np.cos(omega), np.sin(i) ])
         gamma = np.arctan2(ec * np.sin(f), 1 + ec * np.cos(f))
@@ -122,10 +121,10 @@ class TwoBodyKeplerOrbit:
         rhat = np.cos(u) * nhat + np.sin(u) * rT
         vhat = np.sin(gamma - u) * nhat + np.cos(gamma - u) * rT
 
-        self.position_vector = r * rhat # Not sure if these are updated correctly
-        self.position_hat = rhat # Not sure if these are updated correctly
-        self.velocity_vector = v * vhat # Not sure if these are updated correctly
-        
+        self.position_vector = r * rhat
+        self.position_hat = rhat
+        self.velocity_vector = v * vhat
+
         # Fix Mean Anomaly and Find TOF.
         eccentric_anomaly = 2 * np.arctan((np.sqrt(1 - self.eccentricity) / np.sqrt(1 + self.eccentricity)) * np.tan(self.true_anomaly / 2))
         old_mean_anomaly = self.mean_anomaly
@@ -133,7 +132,45 @@ class TwoBodyKeplerOrbit:
 
         if self.mean_anomaly < 0:
             self.mean_anomaly += 2 * np.pi
-        
+
+        time_of_flight = (self.mean_anomaly - old_mean_anomaly) / (self.mean_motion)
+
+        return time_of_flight
+
+    def propagate_true_anomaly_lagrange(self, delta_true_anomaly):
+        """This will use lagrange method to propagate the changed orbital elements given change in true anomaly.  This function returns the time of flight this propagation took."""
+        if self.angle_type == 'deg':
+            delta_true_anomaly = np.radians(delta_true_anomaly)
+
+        position = self.position_vector
+        velocity = self.velocity_vector
+
+        # Constants needed for Lagrange Coefficients
+        r_0 = np.linalg.norm(position)
+        v_0 = np.linalg.norm(velocity)
+        v_r_0 = np.dot(position, velocity) / r_0
+        h = r_0 * np.sqrt(v_0**2 - v_r_0**2)
+        b = h**2 / OrbitUtilities.EARTH_MU
+        r = b * (1 / (1 + (b / r_0 - 1) * np.cos(delta_true_anomaly) - (b / h) * v_r_0 * np.sin(delta_true_anomaly)))
+
+        # Lagrange Coefficients -> Transformation Matrix -> Propagated Position and Velocity
+        f = 1 - (1 / b) * r * (1 - np.cos(delta_true_anomaly))
+        g = r * r_0 / h * np.sin(delta_true_anomaly)
+        f_dot = (h / b) * ((1 - np.cos(delta_true_anomaly)) / np.sin(delta_true_anomaly)) * (1 / b * (1 - np.cos(delta_true_anomaly)) - 1 / r_0 - 1 / r)
+        g_dot = 1 - 1 / b * r_0 * (1 - np.cos(delta_true_anomaly))
+
+        # Update position and velocity
+        self.position_vector = f * position + g * velocity
+        self.velocity_vector = f_dot * position + g_dot * velocity
+
+        # Update True Anomaly and Mean Anomaly
+        self.true_anomaly = np.mod(self.true_anomaly + delta_true_anomaly, 2 * np.pi)
+        eccentric_anomaly = 2 * np.arctan((np.sqrt(1 - self.eccentricity) / np.sqrt(1 + self.eccentricity)) * np.tan(self.true_anomaly / 2))
+        old_mean_anomaly = self.mean_anomaly
+        self.mean_anomaly = eccentric_anomaly - self.eccentricity * np.sin(eccentric_anomaly)
+        if self.mean_anomaly < 0:
+            self.mean_anomaly += 2 * np.pi
+
         time_of_flight = (self.mean_anomaly - old_mean_anomaly) / (self.mean_motion)
 
         return time_of_flight
@@ -153,7 +190,7 @@ class TwoBodyKeplerOrbit:
         self.angular_momentum_hat = self.angular_momentum / np.linalg.norm(self.angular_momentum)
 
         # Normalized ascending node vector.
-        self.ascending_node_hat = cross(K, self.angular_momentum) / np.linalg.norm(cross(K, self.angular_momentum)) 
+        self.ascending_node_hat = cross(K, self.angular_momentum) / np.linalg.norm(cross(K, self.angular_momentum))
 
         self.total_energy = 0.5 * np.dot(self.velocity_vector, self.velocity_vector) - OrbitUtilities.EARTH_MU / np.linalg.norm(self.position_vector)
 
@@ -161,7 +198,7 @@ class TwoBodyKeplerOrbit:
         self.eccentricity_vector = 1 / OrbitUtilities.EARTH_MU * cross(self.velocity_vector, self.angular_momentum) - self.position_hat
         self.eccentricity =  np.linalg.norm(self.eccentricity_vector)
         self.orbit_type = KeplerOrbitTypes.get_orbit_type(self.eccentricity)
-        
+
         # If orbit_type is 'parabolic' energy is 0.
         if self.orbit_type == KeplerOrbitTypes.PARABOLIC:
             self.semi_major_axis = np.Inf
@@ -170,7 +207,7 @@ class TwoBodyKeplerOrbit:
             self.semi_major_axis = -1 * OrbitUtilities.EARTH_MU / (2 * self.total_energy)
             self.parameter = self.semi_major_axis * (1 - np.power(self.eccentricity, 2))
             self.perigee = self.semi_major_axis * (1 - self.eccentricity) # Closest point
-        
+
         if self.orbit_type == KeplerOrbitTypes.HYPERBOLIC:
             self.semi_minor_axis = None
             self.period = None
@@ -179,7 +216,7 @@ class TwoBodyKeplerOrbit:
             self.semi_minor_axis = self.semi_major_axis * np.sqrt(1 - self.eccentricity**2)
             self.period = 2 * np.pi * np.sqrt(np.power(self.semi_major_axis, 3)/OrbitUtilities.EARTH_MU)
             self.apogee = self.semi_major_axis * (1 + self.eccentricity) # Furthest point
-        
+
         # If the inclination is less than 90 degrees, hte elliptical orbit is a direct (prograde) orbit.
         self.inclination = np.arccos(np.dot(K, self.angular_momentum_hat))
 
@@ -198,7 +235,7 @@ class TwoBodyKeplerOrbit:
         elif self.orbit_type == KeplerOrbitTypes.HYPERBOLIC:
             self.hyperbolic_anomaly = 2 * np.arctanh(np.sqrt(self.eccentricity - 1) * np.tan(self.true_anomaly / 2) / np.sqrt(self.eccentricity + 1))
             self.mean_anomaly = np.mod((self.eccentricity * np.sinh(self.hyperbolic_anomaly) - self.hyperbolic_anomaly), 2 * np.pi)
-        
+
         # Orbital mean motion [ rad/s ] (The same as {2pi / Period})
         self.mean_motion = np.sqrt(OrbitUtilities.EARTH_MU / np.power(float(np.abs(self.semi_major_axis)), 3))
 
@@ -216,7 +253,7 @@ class TwoBodyKeplerOrbit:
         perifocal_velocity = np.array([-1 * (OrbitUtilities.EARTH_MU / H) * (np.sin(theta)), (OrbitUtilities.EARTH_MU / H) * (e + np.cos(theta))])
 
         return (perifocal_position, perifocal_velocity)
-        
+
 
     ORBIT_INFO_FORMAT = "\n-----Orbit INFO-----\nOrbit Type: {orbit_type}\nPosition: {position} [km]\nVelocity: {velocity} [km/s]\nAngular Momentum(H): {angular_momentum} [km^3/s]\nTotal Energy(E): {total_energy} [km^2/s^2]\nSemi-Major Axis(a): {semi_major_axis} [km]\nSemi-Minor Axis(b): {semi_minor_axis} [km]\nParameter(p): {parameter}\nEccentricity(e): {eccentricity}\nPeriod(T): {period} [s]\nPerigee: {perigee} [km]\nApogee: {apogee} [km]\nTrue Anomaly(f): {true_anomaly} [{a_unit}]\nFlight Path Angle(gamma): {flight_path_angle} [{a_unit}]\nMean Anomaly(M): {mean_anomaly} [{a_unit}]\n \
                          \n-----Orientation INFO-----\nRight Ascension of Ascending Node(Omega): {right_ascension_of_ascending_node} [{a_unit}]\nInclination(i): {inclination} [{a_unit}]\nArgument of Periapsis(w): {argument_of_periapsis} [{a_unit}]\n"
@@ -260,7 +297,7 @@ class OrbitUtilities:
         def f(Ea):
             return Ea - ec * np.sin(Ea) - M # Kepler's Equ.
         def df(Ea):
-            return (1 - ec * np.cos(Ea)) # Derivative of Kepler's Equ.
+            return 1 - ec * np.cos(Ea) # Derivative of Kepler's Equ.
 
         while np.abs(f(E)) > tolerance:
             E = E - f(E) / df(E)
@@ -277,13 +314,13 @@ class OrbitUtilities:
         def f(Ha):
             return ec * np.sinh(Ha) - M - Ha # Kepler's Equ.
         def df(Ha):
-            return (ec * np.cosh(Ha) - 1) # Derivative of Kepler's Equ.
+            return ec * np.cosh(Ha) - 1 # Derivative of Kepler's Equ.
 
         while np.abs(f(H)) > tolerance:
             H = H - f(H) / df(H)
 
         return H
-    
+
     @staticmethod
     def calculate_velocity_gibbs(measured_positions):
         """This function uses Gibbs method of orbital determination to calculate orbital velocity in the ECI frame given three known positions in the ECI frame. This returns the velocity of the middle position measurement."""
@@ -305,11 +342,11 @@ class OrbitUtilities:
         angular_momentum_vector = H * h_hat
 
         eccentricity_vector = (((H**2 / OrbitUtilities.EARTH_MU - r1) * cross(position3, h_hat)) - ((H**2 / OrbitUtilities.EARTH_MU - r3) * cross(position1, h_hat))) / np.linalg.norm(cross(position1, position3))
-        
+
         calculated_velocity = cross((OrbitUtilities.EARTH_MU / H**2) * angular_momentum_vector, eccentricity_vector + position2 / r2)
 
         return calculated_velocity
-    
+
     @staticmethod
     def transform_position_SEZ_to_ECI(observation_lat_long, line_of_sight_elements):
         """This will take a location on earth and a position measurment of an orbit in South-East-Zenith(SEZ) coordinates and convert the position to ECI coordinates.
@@ -327,12 +364,12 @@ class OrbitUtilities:
         p_vector_hat = np.array([-1 * np.cos(ele) * np.cos(azi), np.cos(ele) * np.sin(azi), np.sin(ele)])
         p_vector = dist * p_vector_hat
 
-        sez_to_eci_transformation_matrix = np.matrix([[np.sin(lat) * np.cos(long), -1 * np.sin(long), np.cos(lat) * np.cos(long)], 
-                                                      [np.sin(lat) * np.sin(long), np.cos(long), np.cos(lat) * np.sin(long)], 
+        sez_to_eci_transformation_matrix = np.matrix([[np.sin(lat) * np.cos(long), -1 * np.sin(long), np.cos(lat) * np.cos(long)],
+                                                      [np.sin(lat) * np.sin(long), np.cos(long), np.cos(lat) * np.sin(long)],
                                                       [-1 * np.cos(lat), 0, np.sin(lat)]])
 
         return r_site_vector + np.array(np.matmul(sez_to_eci_transformation_matrix, p_vector))[0]
-    
+
     @staticmethod
     def propagate_true_anomaly_lagrange_perifocal(orbit, delta_true_anomaly) -> None:
         """This will use lagrange method to propagate position and velocity in perifocal frame given change in true anomaly."""
@@ -340,10 +377,8 @@ class OrbitUtilities:
             delta_true_anomaly = np.radians(delta_true_anomaly)
 
         r_v = TwoBodyKeplerOrbit.convert_position_and_velocity_to_perifocal_frame(orbit)
-        # position = r_v[0]
-        # velocity = r_v[1]
-        position = orbit.position_vector
-        velocity = orbit.velocity_vector
+        position = r_v[0]
+        velocity = r_v[1]
 
         # Constants needed for Lagrange Coefficients
         r_0 = np.linalg.norm(position)
@@ -358,7 +393,7 @@ class OrbitUtilities:
         g = r * r_0 / h * np.sin(delta_true_anomaly)
         f_dot = (h / b) * ((1 - np.cos(delta_true_anomaly)) / np.sin(delta_true_anomaly)) * (1 / b * (1 - np.cos(delta_true_anomaly)) - 1 / r_0 - 1 / r)
         g_dot = 1 - 1 / b * r_0 * (1 - np.cos(delta_true_anomaly))
-        
+
         new_position = f * position + g * velocity
         new_velocity = f_dot * position + g_dot * velocity
 
