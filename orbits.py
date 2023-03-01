@@ -348,6 +348,66 @@ class OrbitUtilities:
         return calculated_velocity
 
     @staticmethod
+    def find_velocities_from_lambert_problem_p_iteration(position_1, position_2, TOF, tolerance=1e-12):
+        """This uses p-iteration to solve lambert's problem. Given two position vectors and the time of flight between them this will return the two coresponding velocities and the converged 'p' parameter."""
+        position_1 = np.array(position_1)
+        position_2 = np.array(position_2)
+        r1 = np.linalg.norm(position_1)
+        r2 = np.linalg.norm(position_2)
+        delta_theta = np.arccos(np.dot(position_1, position_2) / (r1 * r2))
+
+        if delta_theta < np.pi:
+            # Short Way
+            k = r1 * r2 * (1 - np.cos(delta_theta))
+            m = r1 * r2 * (1 + np.cos(delta_theta))
+            l = r1 + r2
+            
+            # Lagrange Functions from delta_theta
+            def lagrange_f(current_p):
+                return 1 - r2 / current_p * (1 - np.cos(delta_theta))
+            def lagrange_f_dot(current_p):
+                return np.sqrt(OrbitUtilities.EARTH_MU / current_p) * np.tan(delta_theta / 2) * ((1 - np.cos(delta_theta)) / current_p - 1 / r1 - 1 / r2)
+            def lagrange_g(current_p):
+                return r1 * r2 * np.sin(delta_theta) / np.sqrt(current_p * OrbitUtilities.EARTH_MU)
+            def lagrange_g_dot(current_p):
+                return 1 - r1 / current_p * (1 - np.cos(delta_theta))
+
+            # Functions Used Directly in P-Iteration.
+            def semi_major_axis(current_p):
+                return (m * k * current_p) / ((2 * m - l**2) * current_p**2 + 2 * k * l * current_p - k**2)
+            def delta_E(current_p):
+                return np.arctan2(-1 * r1 * r2 * lagrange_f_dot(current_p), (1 - r1 / semi_major_axis(current_p) * (1 - lagrange_f(current_p))) * np.sqrt(OrbitUtilities.EARTH_MU * semi_major_axis(current_p)))
+            def TOF_error(TOF_i):
+                return TOF_i - TOF
+            def next_TOF(current_p):
+                return lagrange_g(current_p) + np.sqrt(semi_major_axis(current_p)**3 / OrbitUtilities.EARTH_MU) * (delta_E(current_p) - np.sin(delta_E(current_p)))
+
+            # Set Initial Conditions
+            p_min = k / (l + np.sqrt(2 * m))
+            p_max = k / (l - np.sqrt(2 * m))
+            p = 0.7 * p_min + 0.3 * p_max
+            previous_p = p
+            current_TOF = next_TOF(p)
+            previous_TOF = current_TOF
+            p = p - TOF_error(current_TOF) * ((p - p_max) / (TOF_error(current_TOF) - TOF_error(p_max)))
+
+            # P-Iteration
+            while np.abs(TOF_error(current_TOF)) > tolerance:
+                current_TOF = next_TOF(p)
+                tmp_previous_p = previous_p
+                previous_p = p
+                p = p - TOF_error(current_TOF) * ((p - tmp_previous_p) / (TOF_error(current_TOF) - TOF_error(previous_TOF)))
+                previous_TOF = current_TOF
+        else:
+            # Long Way
+            return None
+        
+        v1 = (position_2 - lagrange_f(p) * position_1) / lagrange_g(p)
+        v2 = lagrange_f_dot(p) * position_1 + lagrange_g_dot(p) * position_2
+        
+        return (v1, v2, p)
+
+    @staticmethod
     def transform_position_SEZ_to_ECI(observation_lat_long, line_of_sight_elements):
         """This will take a location on earth and a position measurment of an orbit in South-East-Zenith(SEZ) coordinates and convert the position to ECI coordinates.
         'observation_lat_long' and 'line_of_sight_elements' are lists [latitude, longitude] and [distance, elevation, azimuth] (Note: all angles are given in degrees and longitude is from I axis)."""
