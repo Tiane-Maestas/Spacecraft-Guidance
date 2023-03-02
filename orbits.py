@@ -348,7 +348,7 @@ class OrbitUtilities:
         return calculated_velocity
 
     @staticmethod
-    def find_velocities_from_lambert_problem_p_iteration(position_1, position_2, TOF, tolerance=1e-12):
+    def find_velocities_from_lambert_problem_p_iteration(position_1, position_2, TOF, short_direction=True, tolerance=1e-6):
         """This uses p-iteration to solve lambert's problem. Given two position vectors and the time of flight between them this will return the two coresponding velocities and the converged 'p' parameter."""
         position_1 = np.array(position_1)
         position_2 = np.array(position_2)
@@ -358,52 +358,59 @@ class OrbitUtilities:
 
         if delta_theta < np.pi:
             # Short Way
-            k = r1 * r2 * (1 - np.cos(delta_theta))
-            m = r1 * r2 * (1 + np.cos(delta_theta))
-            l = r1 + r2
-            
-            # Lagrange Functions from delta_theta
-            def lagrange_f(current_p):
-                return 1 - r2 / current_p * (1 - np.cos(delta_theta))
-            def lagrange_f_dot(current_p):
-                return np.sqrt(OrbitUtilities.EARTH_MU / current_p) * np.tan(delta_theta / 2) * ((1 - np.cos(delta_theta)) / current_p - 1 / r1 - 1 / r2)
-            def lagrange_g(current_p):
-                return r1 * r2 * np.sin(delta_theta) / np.sqrt(current_p * OrbitUtilities.EARTH_MU)
-            def lagrange_g_dot(current_p):
-                return 1 - r1 / current_p * (1 - np.cos(delta_theta))
-
-            # Functions Used Directly in P-Iteration.
-            def semi_major_axis(current_p):
-                return (m * k * current_p) / ((2 * m - l**2) * current_p**2 + 2 * k * l * current_p - k**2)
-            def delta_E(current_p):
-                return np.arctan2(-1 * r1 * r2 * lagrange_f_dot(current_p), (1 - r1 / semi_major_axis(current_p) * (1 - lagrange_f(current_p))) * np.sqrt(OrbitUtilities.EARTH_MU * semi_major_axis(current_p)))
-            def TOF_error(TOF_i):
-                return TOF_i - TOF
-            def next_TOF(current_p):
-                return lagrange_g(current_p) + np.sqrt(semi_major_axis(current_p)**3 / OrbitUtilities.EARTH_MU) * (delta_E(current_p) - np.sin(delta_E(current_p)))
-
-            # Set Initial Conditions
-            p_min = k / (l + np.sqrt(2 * m))
-            p_max = k / (l - np.sqrt(2 * m))
-            p = 0.7 * p_min + 0.3 * p_max
-            previous_p = p
-            current_TOF = next_TOF(p)
-            previous_TOF = current_TOF
-            p = p - TOF_error(current_TOF) * ((p - p_max) / (TOF_error(current_TOF) - TOF_error(p_max)))
-
-            # P-Iteration
-            while np.abs(TOF_error(current_TOF)) > tolerance:
-                current_TOF = next_TOF(p)
-                tmp_previous_p = previous_p
-                previous_p = p
-                p = p - TOF_error(current_TOF) * ((p - tmp_previous_p) / (TOF_error(current_TOF) - TOF_error(previous_TOF)))
-                previous_TOF = current_TOF
+            if not short_direction:
+                delta_theta = np.pi + (np.pi - delta_theta)
         else:
             # Long Way
-            return None
+            if short_direction:
+                delta_theta = np.pi - (delta_theta - np.pi)
+            
+        
+        k = r1 * r2 * (1 - np.cos(delta_theta))
+        m = r1 * r2 * (1 + np.cos(delta_theta))
+        l = r1 + r2
+        
+        # Lagrange Functions from delta_theta
+        def lagrange_f(current_p):
+            return 1 - r2 / current_p * (1 - np.cos(delta_theta))
+        def lagrange_f_dot(current_p):
+            return np.sqrt(OrbitUtilities.EARTH_MU / current_p) * np.tan(delta_theta / 2) * ((1 - np.cos(delta_theta)) / current_p - 1 / r1 - 1 / r2)
+        def lagrange_g(current_p):
+            return r1 * r2 * np.sin(delta_theta) / np.sqrt(current_p * OrbitUtilities.EARTH_MU)
+        def lagrange_g_dot(current_p):
+            return 1 - r1 / current_p * (1 - np.cos(delta_theta))
+
+        # Functions Used Directly in P-Iteration.
+        def semi_major_axis(current_p):
+            return (m * k * current_p) / ((2 * m - l**2) * current_p**2 + (2 * k * l * current_p) - k**2)
+        def delta_E(current_p):
+            d_E = np.arctan2(-1 * r1 * r2 * lagrange_f_dot(current_p), (1 - r1 / semi_major_axis(current_p) * (1 - lagrange_f(current_p))) * np.sqrt(OrbitUtilities.EARTH_MU * semi_major_axis(current_p)))
+            if d_E < 0:
+                return d_E + 2 * np.pi
+            return d_E
+        def TOF_error(TOF_i):
+            return TOF_i - TOF
+        def next_TOF(current_p):
+            return lagrange_g(current_p) + np.sqrt(semi_major_axis(current_p)**3 / OrbitUtilities.EARTH_MU) * (delta_E(current_p) - np.sin(delta_E(current_p)))
+
+        # Set Initial Conditions
+        p_min = k / (l + np.sqrt(2 * m))
+        p_max = k / (l - np.sqrt(2 * m))
+        previous_p = 0.7 * p_min + 0.3 * p_max
+        p = 0.3 * p_min + 0.7 * p_max
+        previous_TOF = next_TOF(previous_p)
+        current_TOF = next_TOF(p)
+
+        # P-Iteration
+        while np.abs(TOF_error(current_TOF)) > tolerance:
+            tmp_previous_p = previous_p
+            previous_p = p
+            p = p - TOF_error(current_TOF) * ((p - tmp_previous_p) / (TOF_error(current_TOF)  - TOF_error(previous_TOF)))
+            previous_TOF = current_TOF
+            current_TOF = next_TOF(p)
         
         v1 = (position_2 - lagrange_f(p) * position_1) / lagrange_g(p)
-        v2 = lagrange_f_dot(p) * position_1 + lagrange_g_dot(p) * position_2
+        v2 = lagrange_f_dot(p) * position_1 + lagrange_g_dot(p) * v1
         
         return (v1, v2, p)
 

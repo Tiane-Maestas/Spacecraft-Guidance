@@ -54,8 +54,8 @@ from orbits import OrbitUtilities
 # print(TwoBodyKeplerOrbit.convert_position_and_velocity_to_perifocal_frame(test_orbit))
 
 #-----Testing Lambert's Problem by P-Iteration-----
-test_position = [3108.9, 6491.1, 428.2]
-test_params = OrbitUtilities.find_velocities_from_lambert_problem_p_iteration(test_position, [-2865, 6610.2, 2234.2], 840)
+test_position = [-5655.144, -3697.284, -2426.687]
+test_params = OrbitUtilities.find_velocities_from_lambert_problem_p_iteration(test_position, [5891.286, 2874.322, -2958.454], 3780, short_direction=False)
 print(test_params)
 test_orbit = TwoBodyKeplerOrbit(test_position, test_params[0], angle_type='deg')
 print(test_orbit)
