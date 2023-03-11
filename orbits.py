@@ -95,6 +95,15 @@ class TwoBodyKeplerOrbit:
     def update(self, radial_vector, velocity_vector) -> None:
         """Not sure about this yet."""
 
+    def propagate_mean_anomaly(self, delta_t):
+        """This will propagate the orbit forward by a given time amount. (delta_t > 0)"""
+        final_mean_anomaly = np.sqrt(OrbitUtilities.EARTH_MU / self.semi_major_axis**3) * delta_t + self.mean_anomaly
+        final_eccentric_anomaly = OrbitUtilities.eccentric_anomaly_from_mean(final_mean_anomaly, self.eccentricity)
+        final_true_anomaly = 2 * np.arctan((np.sqrt(1 + self.eccentricity) / np.sqrt(1 - self.eccentricity)) * np.tan(final_eccentric_anomaly / 2))
+        delta_true_anomaly = final_true_anomaly - self.true_anomaly
+
+        return self.propagate_true_anomaly(delta_true_anomaly)
+
     def propagate_true_anomaly(self, delta_true_anomaly) -> float:
         """This will increase the true anomaly by the given amount and re-calculate the changed orbital elements. This function returns the time of flight this propagation took."""
         if self.angle_type == 'deg':
@@ -280,8 +289,9 @@ class TwoBodyKeplerOrbit:
 class OrbitUtilities:
     """This is a collection of utitity functions and constants for orbital calculations."""
     # Known Constants
-    EARTH_RADIUS = 6378  # km
-    EARTH_MU = 3.986e5  # km^3/s^2
+    EARTH_RADIUS = 6378.1366  # km
+    EARTH_MU = 3.986004354e5  # km^3/s^2
+    EARTH_ROTATION_RATE = ωE = 0.000072921159 # rad/s
 
     @staticmethod
     def eccentric_anomaly_from_mean(M, ec, tolerance=1e-14):
@@ -465,3 +475,56 @@ class OrbitUtilities:
         new_velocity = f_dot * position + g_dot * velocity
 
         return (new_position, new_velocity)
+    
+    @staticmethod
+    def positions_from_line_of_sight_gauss(julian_dates, r_sites, line_of_sights):
+        """This returns a set of 3 positions given 3 line of site measurments."""
+        delta_t1 = julian_dates[0] - julian_dates[1] # Days
+        delta_t3 = julian_dates[2] - julian_dates[1] # Days
+        delta_t1 = delta_t1 * 24 * 3600 # s
+        delta_t3 = delta_t3 * 24 * 3600 # s
+
+        a1 = delta_t3 / (delta_t3 - delta_t1)
+        a3 = -1 * delta_t1 / (delta_t3 - delta_t1)
+        a1_u = delta_t3 * (np.power(delta_t3 - delta_t1, 2) - np.power(delta_t3, 2)) / (6 * (delta_t3 - delta_t1))
+        a3_u = -1 * delta_t1 * (np.power(delta_t3 - delta_t1, 2) - np.power(delta_t1, 2)) / (6 * (delta_t3 - delta_t1))
+
+        line_of_sights = np.matrix(line_of_sights)        
+        line_of_sights_inv = np.linalg.inv(line_of_sights)
+
+        r_sites = np.array(r_sites)
+        M = np.array(np.matmul(line_of_sights_inv, r_sites))
+    
+        d1 = M[1][0] * a1 - M[1][1] + M[1][2] * a3
+        d2 = M[1][0] * a1_u + M[1][2] * a3_u
+        
+        C = np.array(np.dot(np.transpose(line_of_sights)[1], np.transpose(r_sites)[1]))[0][0]
+        
+        alpha = d1**2 + 2 * C * d1 + np.dot(np.transpose(r_sites)[1], np.transpose(r_sites)[1])
+        beta = 2 * OrbitUtilities.EARTH_MU * (C * d2 + d1 * d2) 
+        gamma = OrbitUtilities.EARTH_MU**2 * d2**2
+
+        # Find the real roots of polynomial.
+        coeff = [1, 0, -1 * alpha, 0, 0, -1 * beta, 0, 0, -1 * gamma]
+        roots = np.roots(coeff)
+        real_roots = []
+        for root in roots:
+            if np.isreal(root):
+                real_roots.append(root.real)
+        real_roots = np.array(real_roots)
+        
+        u = OrbitUtilities.EARTH_MU / real_roots[0]**3
+
+        c = np.array([a1 + a1_u * u, -1, a3 + a3_u * u])
+
+        roe = np.array(np.matmul(M, -1 * c)) / c
+        
+        p1 = np.array(roe[0] * np.transpose(line_of_sights)[0] + np.transpose(r_sites)[0])[0]
+        p2 = np.array(roe[1] * np.transpose(line_of_sights)[1] + np.transpose(r_sites)[1])[0]
+        p3 = np.array(roe[2] * np.transpose(line_of_sights)[2] + np.transpose(r_sites)[2])[0]
+                
+        return p1, p2, p3
+
+    @staticmethod
+    def line_of_sights_from_ra_and_dec(RAs, DECs):
+        """"""
