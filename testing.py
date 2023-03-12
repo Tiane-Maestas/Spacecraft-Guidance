@@ -76,5 +76,5 @@ from orbits import OrbitUtilities
 # print(line_of_sights)
 
 #-----Testing Site Positions-----
-r_sites = OrbitUtilities.site_positions(40, -110, 2, [2456159.986435, 2456159.991991, 2456159.994769])
+r_sites = OrbitUtilities.site_positions(40, -110, 2, [11.67, 11.807, 11.87])
 print(r_sites)

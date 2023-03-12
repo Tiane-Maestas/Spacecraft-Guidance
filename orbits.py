@@ -97,6 +97,9 @@ class TwoBodyKeplerOrbit:
 
     def propagate_mean_anomaly(self, delta_t):
         """This will propagate the orbit forward by a given time amount. (delta_t > 0)"""
+        if self.orbit_type != KeplerOrbitTypes.ELIPTICAL:
+            return None
+
         final_mean_anomaly = np.sqrt(OrbitUtilities.EARTH_MU / self.semi_major_axis**3) * delta_t + self.mean_anomaly
         final_eccentric_anomaly = OrbitUtilities.eccentric_anomaly_from_mean(final_mean_anomaly, self.eccentricity)
         final_true_anomaly = 2 * np.arctan((np.sqrt(1 + self.eccentricity) / np.sqrt(1 - self.eccentricity)) * np.tan(final_eccentric_anomaly / 2))
@@ -427,7 +430,7 @@ class OrbitUtilities:
     @staticmethod
     def transform_position_SEZ_to_ECI(observation_lat_long, line_of_sight_elements):
         """This will take a location on earth and a position measurment of an orbit in South-East-Zenith(SEZ) coordinates and convert the position to ECI coordinates.
-        'observation_lat_long' and 'line_of_sight_elements' are lists [latitude, longitude] and [distance, elevation, azimuth] (Note: all angles are given in degrees and longitude is from I axis)."""
+        'observation_lat_long' and 'line_of_sight_elements' are lists [latitude, longitude] (not earth lat, long) and [distance, elevation, azimuth] (Note: all angles are given in degrees and longitude is from I axis)."""
         lat = np.radians(observation_lat_long[0])
         long = np.radians(observation_lat_long[1])
 
@@ -531,7 +534,7 @@ class OrbitUtilities:
 
         line_of_sites = []
         for i in range(len(RAs)):
-            # Assume both inputs are in either deg or hr units.
+            # Assume both inputs are in deg.
             alpha = np.radians(RAs[i])
             delta = np.radians(DECs[i])
             line_of_sites.append([np.cos(delta) * np.cos(alpha), np.cos(delta) * np.sin(alpha), np.sin(delta)])
@@ -540,25 +543,32 @@ class OrbitUtilities:
         return np.transpose(line_of_sites)
     
     @staticmethod
-    def site_positions(lat, long, alt, JDs):
+    def site_positions(lat, lon, alt, LSTs):
         """This will return the corresponding site positions in ECI frame given site lat, long, and altitude with the time of each measurement."""
-        # Assume both inputs are in either deg or hr units.
-        alpha = np.radians(long)
-        alpha = OrbitUtilities.EARTH_ROTATION_RATE * deltaT
+        # Assume both inputs are in deg.
+        # lon = -110
+        # lat = 40
+        # alt = 2
+        alpha_0 = np.radians(lon)
         delta = np.radians(lat)
-        r_site_fixed = [(OrbitUtilities.EARTH_RADIUS + alt) * np.cos(delta) * np.cos(alpha), (OrbitUtilities.EARTH_RADIUS + alt) * np.cos(delta) * np.sin(alpha), (OrbitUtilities.EARTH_RADIUS + alt) * np.sin(delta)] # Use lat, long for this
-            
-        r_site_fixed = [-1673.9286, -4599.0809, 4079.2711]
+        r_site_fixed = [(OrbitUtilities.EARTH_RADIUS + alt) * np.cos(delta) * np.cos(alpha_0), (OrbitUtilities.EARTH_RADIUS + alt) * np.cos(delta) * np.sin(alpha_0), (OrbitUtilities.EARTH_RADIUS + alt) * np.sin(delta)] # Use lat, long for this
 
+        r_site_fixed = [-1673.9286, -4599.0809, 4079.2711]
+        print(np.linalg.norm(r_site_fixed))
+
+        r_site_fixed = [0, 0, (OrbitUtilities.EARTH_RADIUS + alt)]
+        
         site_positions = []
-        for jd in JDs:
-            GMST = 18.697374558 + 24.06570982441908*(jd - 2451545.0)
-            print(GMST)
-            R = np.matrix([[np.sin(delta) * np.cos(alpha), -1 * np.sin(alpha), np.cos(delta) * np.cos(alpha)], 
-                           [np.sin(delta) * np.cos(alpha), np.cos(alpha), np.cos(delta) * np.sin(alpha)], 
-                           [-1 * np.cos(delta), 0, np.sin(alpha)]])
-            r_site = np.array(np.matmul(R, r_site_fixed))[0]
-            site_positions.append(r_site)
+        for lst in LSTs:
+            delta_t = lst * 3600 + 25200
+            alpha = OrbitUtilities.EARTH_ROTATION_RATE * delta_t + alpha_0
+            # R = np.matrix([[np.sin(delta) * np.cos(alpha), -1 * np.sin(alpha), np.cos(delta) * np.cos(alpha)], 
+            #                [np.sin(delta) * np.cos(alpha), np.cos(alpha), np.cos(delta) * np.sin(alpha)], 
+            #                [-1 * np.cos(delta), 0, np.sin(delta)]])
+            r_site_fixed = [(OrbitUtilities.EARTH_RADIUS + alt) * np.cos(delta) * np.cos(alpha), (OrbitUtilities.EARTH_RADIUS + alt) * np.cos(delta) * np.sin(alpha), (OrbitUtilities.EARTH_RADIUS + alt) * np.sin(delta)]
+            # r_site = np.array(np.matmul(R, r_site_fixed))[0]
+            site_positions.append(r_site_fixed)
+            print(np.linalg.norm(r_site_fixed))
         
         return site_positions
 
