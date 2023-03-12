@@ -68,3 +68,13 @@ from orbits import OrbitUtilities
 #                [2748.195, 2888.232, 2956.935],
 #                [4074.237, 4074.364, 4074.430]]
 # JD_test = [2456159.986435, 2456159.991991, 2456159.994769]
+
+#-----Testing Line of Sights from ra and dec-----
+# RAs = [0.939913, 45.025748, 67.886655]
+# DECs = [18.667717, 35.664741, 36.996583]
+# line_of_sights = OrbitUtilities.line_of_sights_from_ra_and_dec(RAs, DECs, angle_type="asdf")
+# print(line_of_sights)
+
+#-----Testing Site Positions-----
+r_sites = OrbitUtilities.site_positions(40, -110, 2, [2456159.986435, 2456159.991991, 2456159.994769])
+print(r_sites)

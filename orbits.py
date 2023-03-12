@@ -527,4 +527,39 @@ class OrbitUtilities:
 
     @staticmethod
     def line_of_sights_from_ra_and_dec(RAs, DECs):
-        """"""
+        """This returns the corresponding line of site vectors in ECI frame from RAs and DECs."""
+
+        line_of_sites = []
+        for i in range(len(RAs)):
+            # Assume both inputs are in either deg or hr units.
+            alpha = np.radians(RAs[i])
+            delta = np.radians(DECs[i])
+            line_of_sites.append([np.cos(delta) * np.cos(alpha), np.cos(delta) * np.sin(alpha), np.sin(delta)])
+        line_of_sites = np.array(line_of_sites)
+
+        return np.transpose(line_of_sites)
+    
+    @staticmethod
+    def site_positions(lat, long, alt, JDs):
+        """This will return the corresponding site positions in ECI frame given site lat, long, and altitude with the time of each measurement."""
+        # Assume both inputs are in either deg or hr units.
+        alpha = np.radians(long)
+        alpha = OrbitUtilities.EARTH_ROTATION_RATE * deltaT
+        delta = np.radians(lat)
+        r_site_fixed = [(OrbitUtilities.EARTH_RADIUS + alt) * np.cos(delta) * np.cos(alpha), (OrbitUtilities.EARTH_RADIUS + alt) * np.cos(delta) * np.sin(alpha), (OrbitUtilities.EARTH_RADIUS + alt) * np.sin(delta)] # Use lat, long for this
+            
+        r_site_fixed = [-1673.9286, -4599.0809, 4079.2711]
+
+        site_positions = []
+        for jd in JDs:
+            GMST = 18.697374558 + 24.06570982441908*(jd - 2451545.0)
+            print(GMST)
+            R = np.matrix([[np.sin(delta) * np.cos(alpha), -1 * np.sin(alpha), np.cos(delta) * np.cos(alpha)], 
+                           [np.sin(delta) * np.cos(alpha), np.cos(alpha), np.cos(delta) * np.sin(alpha)], 
+                           [-1 * np.cos(delta), 0, np.sin(alpha)]])
+            r_site = np.array(np.matmul(R, r_site_fixed))[0]
+            site_positions.append(r_site)
+        
+        return site_positions
+
+        
