@@ -350,6 +350,7 @@ class OrbitUtilities:
         r2 = np.linalg.norm(position2)
         r3 = np.linalg.norm(position3)
 
+        print(OrbitUtilities.EARTH_MU * (r2 - c1 * r1 - c3 * r3) / (1 - c1 - c3))
         H = np.sqrt(OrbitUtilities.EARTH_MU * (r2 - c1 * r1 - c3 * r3) / (1 - c1 - c3))
         h_hat = cross(position1, position3) / np.linalg.norm(cross(position1, position3))
         angular_momentum_vector = H * h_hat
@@ -525,8 +526,22 @@ class OrbitUtilities:
         p1 = np.array(roe[0] * np.transpose(line_of_sights)[0] + np.transpose(r_sites)[0])[0]
         p2 = np.array(roe[1] * np.transpose(line_of_sights)[1] + np.transpose(r_sites)[1])[0]
         p3 = np.array(roe[2] * np.transpose(line_of_sights)[2] + np.transpose(r_sites)[2])[0]
+
+        print(np.linalg.norm(p1))
                 
         return p1, p2, p3
+    
+    @staticmethod # Unfinished.
+    def positions_from_line_of_sight_laplace(julian_dates, r_sites, line_of_sights):
+        """This returns a set of 3 positions given 3 line of site measurments."""
+        delta_t1 = julian_dates[0] - julian_dates[1] # Days
+        delta_t3 = julian_dates[2] - julian_dates[1] # Days
+        delta_t1 = delta_t1 * 24 * 3600 # s
+        delta_t3 = delta_t3 * 24 * 3600 # s
+
+        roe2_dot = delta_t3**2 * line_of_sights[0] + (delta_t1**2 - delta_t3**2) * line_of_sights[1] - delta_t1**2 * line_of_sights[2] / (delta_t1 * delta_t3 * (delta_t3 - delta_t1))
+        roe2_dot_dot = 2 * (-1 * delta_t3 * line_of_sights[0] + (delta_t3 - delta_t1) * line_of_sights[1] + delta_t1 * line_of_sights[2]) / (delta_t1 * delta_t3 * (delta_t3 - delta_t1)) 
+
 
     @staticmethod
     def line_of_sights_from_ra_and_dec(RAs, DECs):
@@ -543,32 +558,26 @@ class OrbitUtilities:
         return np.transpose(line_of_sites)
     
     @staticmethod
-    def site_positions(lat, lon, alt, LSTs):
+    def site_positions(lat, alt, LSTs):
         """This will return the corresponding site positions in ECI frame given site lat, long, and altitude with the time of each measurement."""
-        # Assume both inputs are in deg.
-        # lon = -110
-        # lat = 40
-        # alt = 2
-        alpha_0 = np.radians(lon)
+        # Assume inputs are in deg.
         delta = np.radians(lat)
-        r_site_fixed = [(OrbitUtilities.EARTH_RADIUS + alt) * np.cos(delta) * np.cos(alpha_0), (OrbitUtilities.EARTH_RADIUS + alt) * np.cos(delta) * np.sin(alpha_0), (OrbitUtilities.EARTH_RADIUS + alt) * np.sin(delta)] # Use lat, long for this
+        # r_site_fixed = [(OrbitUtilities.EARTH_RADIUS + alt) * np.cos(delta) * np.cos(alpha_0), (OrbitUtilities.EARTH_RADIUS + alt) * np.cos(delta) * np.sin(alpha_0), (OrbitUtilities.EARTH_RADIUS + alt) * np.sin(delta)] # Use lat, long for this
 
-        r_site_fixed = [-1673.9286, -4599.0809, 4079.2711]
-        print(np.linalg.norm(r_site_fixed))
+        # r_site_fixed = [-1673.9286, -4599.0809, 4079.2711]
 
-        r_site_fixed = [0, 0, (OrbitUtilities.EARTH_RADIUS + alt)]
+        #r_site_fixed = [0, 0, (OrbitUtilities.EARTH_RADIUS + alt)]
         
         site_positions = []
         for lst in LSTs:
-            delta_t = lst * 3600 + 25200
-            alpha = OrbitUtilities.EARTH_ROTATION_RATE * delta_t + alpha_0
+            alpha = np.radians(lst)
             # R = np.matrix([[np.sin(delta) * np.cos(alpha), -1 * np.sin(alpha), np.cos(delta) * np.cos(alpha)], 
             #                [np.sin(delta) * np.cos(alpha), np.cos(alpha), np.cos(delta) * np.sin(alpha)], 
             #                [-1 * np.cos(delta), 0, np.sin(delta)]])
             r_site_fixed = [(OrbitUtilities.EARTH_RADIUS + alt) * np.cos(delta) * np.cos(alpha), (OrbitUtilities.EARTH_RADIUS + alt) * np.cos(delta) * np.sin(alpha), (OrbitUtilities.EARTH_RADIUS + alt) * np.sin(delta)]
             # r_site = np.array(np.matmul(R, r_site_fixed))[0]
             site_positions.append(r_site_fixed)
-            print(np.linalg.norm(r_site_fixed))
+            # print(np.linalg.norm(r_site_fixed))
         
         return site_positions
 
