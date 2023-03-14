@@ -1,7 +1,7 @@
 from orbits import TwoBodyKeplerOrbit
 from orbits import OrbitUtilities
 
-
+# Manually set observations in these variables.
 site_lat = 32.881191 # N (deg)
 site_lon = -117.233614 # W (deg)
 lst = [297.113238841384, 297.301252188220, 297.489265534848] # (deg)
@@ -11,42 +11,22 @@ DECs = [81.554921692864, 71.437660976025, 54.089413168164]
 JD = [2454871.264894439, 2454871.265415273, 2454871.265936106]
 JD_prop = 2454873.205555555
 
-
-
-
-
-
+# Get 3 line of sight unit vectors of measurments and the 3 corresponding site vectors.
 line_of_sights = OrbitUtilities.line_of_sights_from_ra_and_dec(RAs, DECs)
-
 r_sites = OrbitUtilities.site_positions(site_lat, alt, lst)
-print(r_sites)
 
+# Estimate the three measured positions using gauss method.
+measured_positions = OrbitUtilities.positions_from_line_of_sight_gauss(JD, r_sites, line_of_sights, printRoots=False)
 
-test_pos = OrbitUtilities.positions_from_line_of_sight_gauss(JD, r_sites, line_of_sights)
-print(test_pos)
-# test_vel = OrbitUtilities.calculate_velocity_gibbs(test_pos)
+# Find a velocity of the middle measurment from gibbs method.
+measured_velocity = OrbitUtilities.calculate_velocity_gibbs(measured_positions)
 
-# print(test_pos)
-# test_vel = OrbitUtilities.find_velocities_from_lambert_problem_p_iteration(test_pos[0], test_pos[1], JD[1] - JD[0], short_direction=False)
-# print(test_vel)
+# Build the orbit and propagate it the final julian date.
+orbit = TwoBodyKeplerOrbit(measured_positions[1], measured_velocity, angle_type='deg')
 
-# test_orbit = TwoBodyKeplerOrbit(test_pos[1], test_vel, angle_type='deg')
-# print(test_orbit)
-# delta_t = JD_prop - JD[1] # days
-# delta_t = delta_t * 24 * 3600 # s
-# # print(test_orbit)
-# time_of_flight = test_orbit.propagate_mean_anomaly(delta_t)
-# print(test_orbit)
-# print(time_of_flight)
+delta_t = JD_prop - JD[1] # days
+delta_t = delta_t * 24 * 3600 # s
+time_of_flight = orbit.propagate_mean_anomaly(delta_t) # 'time_of_flight' should equal 'delta_t'
 
-
-
-# import pandas
-# from IPython.display import display
-
-# headers = ['Orbital Element', 'Value']
-# # Build Data List from orbit here.
-# data_lists = [["Test", "V"], [1234, 1.0012]]
-# orbit_dataframe = pandas.DataFrame(data_lists, columns=headers)
-# orbit_dataframe
-# display(orbit_dataframe)
+# Print a clean output of only the important orbit attributes.
+TwoBodyKeplerOrbit.print_clean_output(orbit)

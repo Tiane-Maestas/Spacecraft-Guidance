@@ -1,6 +1,6 @@
 """This module holds tools for use with orbit calculations and representations."""
 import numpy as np
-
+from prettytable import PrettyTable
 
 class KeplerOrbitTypes:
     """Different characterizations of Kepler Orbits."""
@@ -92,22 +92,25 @@ class TwoBodyKeplerOrbit:
 
         return cls(position_vector, velocity_vector, angle_type=angle_type, time_of_flight=time_of_flight)
 
-    def update(self, radial_vector, velocity_vector) -> None:
-        """Not sure about this yet."""
-
     def propagate_mean_anomaly(self, delta_t):
         """This will propagate the orbit forward by a given time amount. (delta_t > 0)"""
         if self.orbit_type != KeplerOrbitTypes.ELIPTICAL:
             return None
 
         final_mean_anomaly = np.sqrt(OrbitUtilities.EARTH_MU / self.semi_major_axis**3) * delta_t + self.mean_anomaly
+        num_of_full_revs = int((final_mean_anomaly) / (2 * np.pi))
+
         final_eccentric_anomaly = OrbitUtilities.eccentric_anomaly_from_mean(final_mean_anomaly, self.eccentricity)
+
         final_true_anomaly = 2 * np.arctan((np.sqrt(1 + self.eccentricity) / np.sqrt(1 - self.eccentricity)) * np.tan(final_eccentric_anomaly / 2))
         delta_true_anomaly = final_true_anomaly - self.true_anomaly
 
-        return self.propagate_true_anomaly(delta_true_anomaly)
+        if self.angle_type == 'deg':
+            delta_true_anomaly = np.degrees(delta_true_anomaly)
 
-    def propagate_true_anomaly(self, delta_true_anomaly) -> float:
+        return self.propagate_true_anomaly(delta_true_anomaly, num_of_revolutions=num_of_full_revs) # self.propagate_true_anomaly_lagrange(delta_true_anomaly)
+
+    def propagate_true_anomaly(self, delta_true_anomaly, num_of_revolutions=0) -> float:
         """This will increase the true anomaly by the given amount and re-calculate the changed orbital elements. This function returns the time of flight this propagation took."""
         if self.angle_type == 'deg':
             delta_true_anomaly = np.radians(delta_true_anomaly)
@@ -145,11 +148,11 @@ class TwoBodyKeplerOrbit:
         if self.mean_anomaly < 0:
             self.mean_anomaly += 2 * np.pi
 
-        time_of_flight = (self.mean_anomaly - old_mean_anomaly) / (self.mean_motion)
+        time_of_flight = num_of_revolutions * self.period + (self.mean_anomaly - old_mean_anomaly) / (self.mean_motion)
 
         return time_of_flight
 
-    def propagate_true_anomaly_lagrange(self, delta_true_anomaly):
+    def propagate_true_anomaly_lagrange(self, delta_true_anomaly, num_of_revolutions=0):
         """This will use lagrange method to propagate the changed orbital elements given change in true anomaly.  This function returns the time of flight this propagation took."""
         if self.angle_type == 'deg':
             delta_true_anomaly = np.radians(delta_true_anomaly)
@@ -183,7 +186,7 @@ class TwoBodyKeplerOrbit:
         if self.mean_anomaly < 0:
             self.mean_anomaly += 2 * np.pi
 
-        time_of_flight = (self.mean_anomaly - old_mean_anomaly) / (self.mean_motion)
+        time_of_flight = num_of_revolutions * self.period + (self.mean_anomaly - old_mean_anomaly) / (self.mean_motion)
 
         return time_of_flight
 
@@ -287,7 +290,22 @@ class TwoBodyKeplerOrbit:
             elif key == "time_of_flight":
                 return_list[1] = value
         return return_list
-
+    
+    @staticmethod
+    def print_clean_output(orbit):
+        """This prints the orbit infomrmation in a clean grid (unlike __str__) with only key information."""
+        orbit_table = PrettyTable()
+        orbit_table.field_names = ['Orbital Element', 'Value']
+        orbit_table.add_row(["Orbit Type", orbit.orbit_type])
+        orbit_table.add_row(["Position [km]", orbit.position_vector])
+        orbit_table.add_row(["Velocity [km/s]", orbit.velocity_vector])
+        orbit_table.add_row(["Semi-Major Axis [km]", orbit.true_anomaly])
+        orbit_table.add_row(["Eccentricity [None]", orbit.eccentricity])
+        orbit_table.add_row(["True Anomaly [deg]", np.degrees(orbit.true_anomaly)])
+        orbit_table.add_row(["Inclination [deg]", np.degrees(orbit.inclination)])
+        orbit_table.add_row(["R.A. of Ascending Node [deg]", np.degrees(orbit.right_ascension_of_ascending_node)])
+        orbit_table.add_row(["Argument of Periapsis [deg]", np.degrees(orbit.argument_of_periapsis)])
+        print(orbit_table)
 
 class OrbitUtilities:
     """This is a collection of utitity functions and constants for orbital calculations."""
@@ -350,7 +368,6 @@ class OrbitUtilities:
         r2 = np.linalg.norm(position2)
         r3 = np.linalg.norm(position3)
 
-        print(OrbitUtilities.EARTH_MU * (r2 - c1 * r1 - c3 * r3) / (1 - c1 - c3))
         H = np.sqrt(OrbitUtilities.EARTH_MU * (r2 - c1 * r1 - c3 * r3) / (1 - c1 - c3))
         h_hat = cross(position1, position3) / np.linalg.norm(cross(position1, position3))
         angular_momentum_vector = H * h_hat
@@ -457,7 +474,8 @@ class OrbitUtilities:
         if orbit.angle_type == 'deg':
             delta_true_anomaly = np.radians(delta_true_anomaly)
 
-        r_v = TwoBodyKeplerOrbit.convert_position_and_velocity_to_perifocal_frame(orbit)
+        r_v = TwoBodyKeplerOrbit.convert_position_and_velocity_to_perifocal_frame(orbit) # This is probably wrong.
+        
         position = r_v[0]
         velocity = r_v[1]
 
@@ -481,7 +499,7 @@ class OrbitUtilities:
         return (new_position, new_velocity)
     
     @staticmethod
-    def positions_from_line_of_sight_gauss(julian_dates, r_sites, line_of_sights):
+    def positions_from_line_of_sight_gauss(julian_dates, r_sites, line_of_sights, rootIndex=0, printRoots=True):
         """This returns a set of 3 positions given 3 line of site measurments."""
         delta_t1 = julian_dates[0] - julian_dates[1] # Days
         delta_t3 = julian_dates[2] - julian_dates[1] # Days
@@ -517,7 +535,10 @@ class OrbitUtilities:
                 real_roots.append(root.real)
         real_roots = np.array(real_roots)
         
-        u = OrbitUtilities.EARTH_MU / real_roots[0]**3
+        if printRoots:
+            print("Gauss Roots: " + str(real_roots))
+
+        u = OrbitUtilities.EARTH_MU / real_roots[rootIndex]**3
 
         c = np.array([a1 + a1_u * u, -1, a3 + a3_u * u])
 
@@ -526,8 +547,6 @@ class OrbitUtilities:
         p1 = np.array(roe[0] * np.transpose(line_of_sights)[0] + np.transpose(r_sites)[0])[0]
         p2 = np.array(roe[1] * np.transpose(line_of_sights)[1] + np.transpose(r_sites)[1])[0]
         p3 = np.array(roe[2] * np.transpose(line_of_sights)[2] + np.transpose(r_sites)[2])[0]
-
-        print(np.linalg.norm(p1))
                 
         return p1, p2, p3
     
@@ -561,24 +580,15 @@ class OrbitUtilities:
     def site_positions(lat, alt, LSTs):
         """This will return the corresponding site positions in ECI frame given site lat, long, and altitude with the time of each measurement."""
         # Assume inputs are in deg.
-        delta = np.radians(lat)
-        # r_site_fixed = [(OrbitUtilities.EARTH_RADIUS + alt) * np.cos(delta) * np.cos(alpha_0), (OrbitUtilities.EARTH_RADIUS + alt) * np.cos(delta) * np.sin(alpha_0), (OrbitUtilities.EARTH_RADIUS + alt) * np.sin(delta)] # Use lat, long for this
-
-        # r_site_fixed = [-1673.9286, -4599.0809, 4079.2711]
-
-        #r_site_fixed = [0, 0, (OrbitUtilities.EARTH_RADIUS + alt)]
+        phi = np.radians(lat)
         
         site_positions = []
         for lst in LSTs:
-            alpha = np.radians(lst)
-            # R = np.matrix([[np.sin(delta) * np.cos(alpha), -1 * np.sin(alpha), np.cos(delta) * np.cos(alpha)], 
-            #                [np.sin(delta) * np.cos(alpha), np.cos(alpha), np.cos(delta) * np.sin(alpha)], 
-            #                [-1 * np.cos(delta), 0, np.sin(delta)]])
-            r_site_fixed = [(OrbitUtilities.EARTH_RADIUS + alt) * np.cos(delta) * np.cos(alpha), (OrbitUtilities.EARTH_RADIUS + alt) * np.cos(delta) * np.sin(alpha), (OrbitUtilities.EARTH_RADIUS + alt) * np.sin(delta)]
-            # r_site = np.array(np.matmul(R, r_site_fixed))[0]
-            site_positions.append(r_site_fixed)
-            # print(np.linalg.norm(r_site_fixed))
-        
-        return site_positions
+            lamb = np.radians(lst)
+            r_site = (OrbitUtilities.EARTH_RADIUS + alt) * np.array([np.cos(phi) * np.cos(lamb), np.cos(phi) * np.sin(lamb), np.sin(phi)])
+            site_positions.append(r_site)
+        #site_positions = np.array(site_positions)
+        #print(site_positions)
+        return np.transpose(site_positions)
 
         

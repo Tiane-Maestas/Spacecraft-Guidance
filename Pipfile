@@ -5,8 +5,7 @@ name = "pypi"
 
 [packages]
 numpy = "*"
-pandas = "*"
-ipython = "*"
+prettytable = "*"
 
 [dev-packages]
 pylint = "*"

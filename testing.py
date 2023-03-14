@@ -1,3 +1,5 @@
+"""This module holds the tests used for testing orbits. These are kept for references."""
+
 from orbits import TwoBodyKeplerOrbit
 from orbits import OrbitUtilities
 
@@ -38,6 +40,9 @@ from orbits import OrbitUtilities
 # -----Testing True Anomaly Propagation-----
 # test_orbit = TwoBodyKeplerOrbit([-6796, 4025, 3490], [-3.7817, -6.0146, 1.1418], angle_type='deg')
 # print(str(test_orbit.propagate_true_anomaly(200)) + ' [s]')
+# test_orbit = TwoBodyKeplerOrbit([8182.4, -6865.9, 0], [0.47572, 8.8116, 0], angle_type='deg')
+
+# print(str(test_orbit.propagate_true_anomaly(120)) + ' [s]')
 # print(test_orbit)
 
 # -----Testing True Anomaly Propagation Lagrange-----
