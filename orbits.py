@@ -299,7 +299,7 @@ class TwoBodyKeplerOrbit:
         orbit_table.add_row(["Orbit Type", orbit.orbit_type])
         orbit_table.add_row(["Position [km]", orbit.position_vector])
         orbit_table.add_row(["Velocity [km/s]", orbit.velocity_vector])
-        orbit_table.add_row(["Semi-Major Axis [km]", orbit.true_anomaly])
+        orbit_table.add_row(["Semi-Major Axis [km]", orbit.semi_major_axis])
         orbit_table.add_row(["Eccentricity [None]", orbit.eccentricity])
         orbit_table.add_row(["True Anomaly [deg]", np.degrees(orbit.true_anomaly)])
         orbit_table.add_row(["Inclination [deg]", np.degrees(orbit.inclination)])
