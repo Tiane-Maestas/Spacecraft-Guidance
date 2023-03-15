@@ -80,7 +80,7 @@ class TwoBodyKeplerOrbit:
 
         # Ascending node vector
         nhat = np.array([ np.cos(omega) , np.sin(omega), 0 ])
-        rT   = np.array([ -1 * np.cos(i) * np.sin(omega), np.cos(i) * np.cos(omega), np.sin(i) ])
+        rT = np.array([ -1 * np.cos(i) * np.sin(omega), np.cos(i) * np.cos(omega), np.sin(i) ])
 
         gamma = np.arctan2(ec * np.sin(f), 1 + ec * np.cos(f))
 
