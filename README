@@ -22,3 +22,5 @@
     - 'main.py' outlines how to go from 3 initial line of sight measurements on earth to a complete
     oribit. It also propogates the orbit to a desired julian date. For now, all of the configuration
     for this process is done by simply modifying the variables at the top of this file.
+
+4. GitHub Link: https://github.com/Tiane-Maestas/Spacecraft-Guidance
