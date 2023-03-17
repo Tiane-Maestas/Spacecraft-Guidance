@@ -1,19 +1,23 @@
 from orbits import TwoBodyKeplerOrbit
 from orbits import OrbitUtilities
 
-# Manually set observations in these variables.
+# --Manually set observations in these variables--
+# Observation location.
 site_lat = 32.881191 # N (deg)
 site_lon = -117.233614 # W (deg)
-lst = [297.113238841384, 297.301252188220, 297.489265534848] # (deg)
 alt = 0.111 # (km)
-RAs  = [11.199735719497, 333.281391660113, 321.343138567912]
-DECs = [81.554921692864, 71.437660976025, 54.089413168164]
-JD = [2454871.264894439, 2454871.265415273, 2454871.265936106]
+# Observation information. (3 observations)
+lsts = [297.113238841384, 297.301252188220, 297.489265534848] # (deg)
+RAs  = [11.199735719497, 333.281391660113, 321.343138567912] # (deg)
+DECs = [81.554921692864, 71.437660976025, 54.089413168164] # (deg)
+JD = [2454871.264894439, 2454871.265415273, 2454871.265936106] # (days)
+# What date to propogate the orbit to.
 JD_prop = 2454873.205555555
 
-# Get 3 line of sight unit vectors of measurments and the 3 corresponding site vectors.
+# --Run Orbit Calculations--
+# Get 3 line of sight unit vectors from measurments and the 3 corresponding site vectors.
 line_of_sights = OrbitUtilities.line_of_sights_from_ra_and_dec(RAs, DECs)
-r_sites = OrbitUtilities.site_positions(site_lat, alt, lst)
+r_sites = OrbitUtilities.site_positions(site_lat, alt, lsts)
 
 # Estimate the three measured positions using gauss method.
 measured_positions = OrbitUtilities.positions_from_line_of_sight_gauss(JD, r_sites, line_of_sights, printRoots=False)

@@ -1,0 +1,24 @@
+1. Description
+    - This project builds the 'orbits' module that contains two main sub-modules
+    named 'TwoBodyKeplerOrbit' and 'OrbitUtilities'. The 'TwoBodyKeplerOrbit' module
+    is a representation of a classical keplerian orbit in the ECI coordinate frame. 
+    It calculates, stores, and modifies all of the fundamental orbital elements such as 
+    semi-major axis, eccentricty, ext... The 'OrbitUtilities' module is a static class 
+    that contains many helper methods in building and getting information needed to construct
+    and orbit. The general idea is to make measurements and use the utilities module to build
+    an initial position and velocity needed to construct a preliminary orbit.
+
+2. How to run?
+    - This is a standard 'pipenv' structured project. If you don't have python and pip installed
+    on your computer first start there. Then using pip, install 'pipenv'. Once installed and have 
+    a terminal open to the directory of this project start the virtual enviornment using the 
+    command: 'pipenv shell'. Then install all of the dependent packages using 'pipenv install'.
+    From here the project is set up and you can run any of the files using normal python 'filename'.
+    
+    - To run the output of our core project run main.py. 'testing.py' is just documentation of all 
+    of the important tests that were run on the orbits module.
+
+3. About main.py
+    - 'main.py' outlines how to go from 3 initial line of sight measurements on earth to a complete
+    oribit. It also propogates the orbit to a desired julian date. For now, all of the configuration
+    for this process is done by simply modifying the variables at the top of this file.
