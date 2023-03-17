@@ -306,6 +306,7 @@ class TwoBodyKeplerOrbit:
         orbit_table.add_row(["R.A. of Ascending Node [deg]", np.degrees(orbit.right_ascension_of_ascending_node)])
         orbit_table.add_row(["Argument of Periapsis [deg]", np.degrees(orbit.argument_of_periapsis)])
         print(orbit_table)
+        
 
 class OrbitUtilities:
     """This is a collection of utitity functions and constants for orbital calculations."""
